@@ -1,0 +1,10 @@
+[package]
+name = "chippy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[[bin]]
+name = "chippy"
+path = "src/main.rs"
