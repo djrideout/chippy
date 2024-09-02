@@ -1,6 +1,9 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 
-fn main() {
+use macroquad::prelude::*;
+
+#[macroquad::main("chippy")]
+async fn main() {
     // Registers
     let mut r_v: [u8; 16] = [0; 16]; // 16 general purpose "Vx" registers (x is 0-F)
     let mut r_i: u16 = 0; // Register "I"
@@ -14,4 +17,15 @@ fn main() {
 
     // Memory
     let mut mem: [u8; 0x1000] = [0; 0x1000];
+
+    loop {
+        clear_background(RED);
+
+        draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
+        draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
+
+        draw_text("Hello, Macroquad!", 20.0, 20.0, 30.0, DARKGRAY);
+
+        next_frame().await;
+    }
 }
