@@ -14,6 +14,7 @@ struct Args {
 const WIDTH: usize = 64;
 const WIDTH_BYTES: usize = WIDTH / 8;
 const HEIGHT: usize = 32;
+const SCALE: f32 = 10.0;
 
 #[macroquad::main("chippy")]
 async fn main() {
@@ -100,13 +101,18 @@ async fn main() {
         }
 
         // Render display
+        clear_background(BLACK);
         for i in 0 .. HEIGHT {
             for j in 0 .. WIDTH_BYTES {
-                print!("{:08b}", display[i * WIDTH_BYTES + j]);
+                let byte = display[i * WIDTH_BYTES + j];
+                for k in 0 .. u8::BITS {
+                    let pixel = byte >> (7 - k) & 1;
+                    if pixel == 1 {
+                        draw_rectangle(SCALE * (j as u32 * u8::BITS + k) as f32, SCALE * i as f32, SCALE * 1.0, SCALE * 1.0, WHITE);
+                    }
+                }
             }
-            println!();
         }
-        println!();
 
         next_frame().await;
     }
