@@ -47,15 +47,9 @@ async fn main() {
 
     // Display (64x32 monochrome)
     let mut display: [u8; WIDTH_BYTES * HEIGHT] = [0; WIDTH_BYTES * HEIGHT];
+    request_new_screen_size(WIDTH as f32 * SCALE, HEIGHT as f32 * SCALE);
 
     loop {
-        //clear_background(RED);
-
-        //draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        //draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-
-        //draw_text("Hello, Macroquad!", 20.0, 20.0, 30.0, DARKGRAY);
-
         // Get opcode
         let _op: u16 = ((mem[r_pc as usize] as u16) << 8) | mem[(r_pc + 1) as usize] as u16;
         r_pc += 2;
@@ -76,6 +70,11 @@ async fn main() {
             // Set Vx = kk.
             let _x = ((_op & 0xF00) >> 8) as usize;
             r_v[_x] = (_op & 0xFF) as u8;
+        } else if (_op & !0xFFF) == 0x7000 {
+            // 7xkk - ADD Vx, byte
+            // Set Vx = Vx + kk.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            r_v[_x] += (_op & 0xFF) as u8;
         } else if (_op & !0xFFF) == 0xA000 {
             // Annn - LD I, addr
             // Set I = nnn.
@@ -85,19 +84,26 @@ async fn main() {
             // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
             // Sprites are 8 pixels (8 bits/1 byte) wide and from 1 to 15 pixels in height,
             // So each byte is one row of the sprite.
-            // TODO: Support unaligned sprites
-            let _x = (r_v[((_op & 0xF00) >> 8) as usize] / 8) as usize;
+            let _x = r_v[((_op & 0xF00) >> 8) as usize] as usize;
+            let _x_offset = _x % 8;
             let _y = r_v[((_op & 0xF0) >> 4) as usize] as usize;
             let _n = (_op & 0xF) as usize;
             let mut unset = false;
             for i in 0 .. _n {
                 let byte = mem[i + r_i as usize];
-                let display_index = (_y + i) * WIDTH_BYTES + _x;
+                let display_index = (_y + i) * WIDTH_BYTES + _x / 8;
                 let prev = display[display_index];
-                display[display_index] ^= byte;
+                display[display_index] ^= byte >> _x_offset;
                 unset = unset || ((!display[display_index] & prev) > 0);
+                if _x_offset > 0 {
+                    let prev = display[display_index + 1];
+                    display[display_index + 1] ^= byte << (8 - _x_offset);
+                    unset = unset || ((!display[display_index + 1] & prev) > 0);
+                }
             }
             r_v[0xF] = unset as u8;
+        } else {
+            panic!("Unimplemented opcode 0x{:0x}", _op);
         }
 
         // Render display
@@ -105,10 +111,10 @@ async fn main() {
         for i in 0 .. HEIGHT {
             for j in 0 .. WIDTH_BYTES {
                 let byte = display[i * WIDTH_BYTES + j];
-                for k in 0 .. u8::BITS {
+                for k in 0 .. 8 {
                     let pixel = byte >> (7 - k) & 1;
                     if pixel == 1 {
-                        draw_rectangle(SCALE * (j as u32 * u8::BITS + k) as f32, SCALE * i as f32, SCALE * 1.0, SCALE * 1.0, WHITE);
+                        draw_rectangle(SCALE * (j as u32 * 8 + k) as f32, SCALE * i as f32, SCALE * 1.0, SCALE * 1.0, WHITE);
                     }
                 }
             }
