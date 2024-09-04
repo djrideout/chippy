@@ -130,39 +130,43 @@ async fn main() {
         } else if (_op & !0xFF0) == 0x8004 {
             // 8xy4 - ADD Vx, Vy
             // Set Vx = Vx + Vy, set VF = carry.
-            let _next = r_v[_x] as u16 + r_v[_y] as u16;
-            r_v[0xF] = (_next > 0xFF) as u8;
-            r_v[_x] = _next as u8;
+            let _next_x = r_v[_x] as u16 + r_v[_y] as u16;
+            r_v[_x] = _next_x as u8;
+            r_v[0xF] = (_next_x > 0xFF) as u8;
         } else if (_op & !0xFF0) == 0x8005 {
             // 8xy5 - SUB Vx, Vy
             // Set Vx = Vx - Vy, set VF = NOT borrow.
-            r_v[0xF] = (r_v[_x] > r_v[_y]) as u8;
-            if r_v[_x] < r_v[_y] {
-                r_v[_x] = !(r_v[_y] - r_v[_x] - 1);
+            let _prev_x = r_v[_x];
+            if _prev_x < r_v[_y] {
+                r_v[_x] = !(r_v[_y] - _prev_x - 1);
             } else {
-                r_v[_x] = r_v[_x] - r_v[_y];
+                r_v[_x] = _prev_x - r_v[_y];
             }
+            r_v[0xF] = (_prev_x >= r_v[_y]) as u8;
         } else if (_op & !0xFF0) == 0x8006 {
             // 8xy6 - SHR Vx {, Vy}
             // Set Vx = Vx SHR 1.
             // (Maybe the y here is a mistake?)
-            r_v[0xF] = r_v[_x] & 1;
-            r_v[_x] = r_v[_x] >> 1;
+            let _prev_x = r_v[_x];
+            r_v[_x] = _prev_x >> 1;
+            r_v[0xF] = _prev_x & 1;
         } else if (_op & !0xFF0) == 0x8007 {
             // 8xy7 - SUBN Vx, Vy
             // Set Vx = Vy - Vx, set VF = NOT borrow.
-            r_v[0xF] = (r_v[_y] > r_v[_x]) as u8;
-            if r_v[_y] < r_v[_x] {
-                r_v[_x] = !(r_v[_x] - r_v[_y] - 1);
+            let _prev_x = r_v[_x];
+            if r_v[_y] < _prev_x {
+                r_v[_x] = !(_prev_x - r_v[_y] - 1);
             } else {
-                r_v[_x] = r_v[_y] - r_v[_x];
+                r_v[_x] = r_v[_y] - _prev_x;
             }
+            r_v[0xF] = (r_v[_y] >= _prev_x) as u8;
         } else if (_op & !0xFF0) == 0x800E {
             // 8xyE - SHL Vx {, Vy}
             // Set Vx = Vx SHL 1.
             // (Maybe the y here is a mistake?)
-            r_v[0xF] = (r_v[_x] & 0x80) >> 7;
-            r_v[_x] = r_v[_x] << 1;
+            let _prev_x = r_v[_x];
+            r_v[_x] = _prev_x << 1;
+            r_v[0xF] = (_prev_x & 0x80) >> 7;
         } else if (_op & !0xFFF) == 0x9000 {
             // 9xy0 - SNE Vx, Vy
             // Skip next instruction if Vx != Vy.
