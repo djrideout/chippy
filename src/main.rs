@@ -30,7 +30,7 @@ async fn main() {
     let mut r_v: [u8; 16] = [0; 16]; // 16 general purpose "Vx" registers (x is 0-F)
     let mut r_i: u16 = 0; // Register "I"
     let mut r_pc: u16 = 0x200; // Program counter
-    let mut r_sp: u8 = 0; // Stack pointer
+    let mut r_sp: usize = 0; // Stack pointer
     let mut r_delay: u8 = 0; // Delay timer
     let mut r_sound: u8 = 0; // Sound timer
 
@@ -61,10 +61,43 @@ async fn main() {
             for i in 0 .. WIDTH_BYTES * HEIGHT {
                 display[i] = 0;
             }
+        } else if _op == 0x00EE {
+            // 00EE - RET
+            // Return from a subroutine.
+            r_sp -= 1;
+            r_pc = stack[r_sp];
         } else if (_op & !0xFFF) == 0x1000 {
             // 1nnn - JP addr
             // Jump to location nnn.
             r_pc = _op & 0xFFF;
+        } else if (_op & !0xFFF) == 0x2000 {
+            // 2nnn - CALL addr
+            // Call subroutine at nnn.
+            stack[r_sp] = r_pc;
+            r_sp += 1;
+            r_pc = _op & 0xFFF;
+        } else if (_op & !0xFFF) == 0x3000 {
+            // 3xkk - SE Vx, byte
+            // Skip next instruction if Vx = kk.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            if r_v[_x] == (_op & 0xFF) as u8 {
+                r_pc += 2;
+            }
+        } else if (_op & !0xFFF) == 0x4000 {
+            // 4xkk - SNE Vx, byte
+            // Skip next instruction if Vx != kk.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            if r_v[_x] != (_op & 0xFF) as u8 {
+                r_pc += 2;
+            }
+        } else if (_op & !0xFFF) == 0x5000 {
+            // 5xy0 - SE Vx, Vy
+            // Skip next instruction if Vx = Vy.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            if r_v[_x] == r_v[_y] {
+                r_pc += 2;
+            }
         } else if (_op & !0xFFF) == 0x6000 {
             // 6xkk - LD Vx, byte
             // Set Vx = kk.
@@ -74,7 +107,84 @@ async fn main() {
             // 7xkk - ADD Vx, byte
             // Set Vx = Vx + kk.
             let _x = ((_op & 0xF00) >> 8) as usize;
-            r_v[_x] += (_op & 0xFF) as u8;
+            let _next = r_v[_x] as u16 + _op & 0xFF;
+            r_v[_x] = _next as u8;
+        } else if (_op & !0xFF0) == 0x8000 {
+            // 8xy0 - LD Vx, Vy
+            // Set Vx = Vy.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            r_v[_x] = r_v[_y];
+        } else if (_op & !0xFF0) == 0x8001 {
+            // 8xy1 - OR Vx, Vy
+            // Set Vx = Vx OR Vy.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            r_v[_x] |= r_v[_y];
+        } else if (_op & !0xFF0) == 0x8002 {
+            // 8xy2 - AND Vx, Vy
+            // Set Vx = Vx AND Vy.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            r_v[_x] &= r_v[_y];
+        } else if (_op & !0xFF0) == 0x8003 {
+            // 8xy3 - XOR Vx, Vy
+            // Set Vx = Vx XOR Vy.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            r_v[_x] ^= r_v[_y];
+        } else if (_op & !0xFF0) == 0x8004 {
+            // 8xy4 - ADD Vx, Vy
+            // Set Vx = Vx + Vy, set VF = carry.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            let _next = r_v[_x] as u16 + r_v[_y] as u16;
+            r_v[0xF] = (_next > 0xFF) as u8;
+            r_v[_x] = _next as u8;
+        } else if (_op & !0xFF0) == 0x8005 {
+            // 8xy5 - SUB Vx, Vy
+            // Set Vx = Vx - Vy, set VF = NOT borrow.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            r_v[0xF] = (r_v[_x] > r_v[_y]) as u8;
+            if r_v[_x] < r_v[_y] {
+                r_v[_x] = !(r_v[_y] - r_v[_x] - 1);
+            } else {
+                r_v[_x] = r_v[_x] - r_v[_y];
+            }
+        } else if (_op & !0xFF0) == 0x8006 {
+            // 8xy6 - SHR Vx {, Vy}
+            // Set Vx = Vx SHR 1.
+            // (Maybe the y here is a mistake?)
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            r_v[0xF] = r_v[_x] & 1;
+            r_v[_x] = r_v[_x] >> 1;
+        } else if (_op & !0xFF0) == 0x8007 {
+            // 8xy7 - SUBN Vx, Vy
+            // Set Vx = Vy - Vx, set VF = NOT borrow.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            r_v[0xF] = (r_v[_y] > r_v[_x]) as u8;
+            if r_v[_y] < r_v[_x] {
+                r_v[_x] = !(r_v[_x] - r_v[_y] - 1);
+            } else {
+                r_v[_x] = r_v[_y] - r_v[_x];
+            }
+        } else if (_op & !0xFF0) == 0x800E {
+            // 8xyE - SHL Vx {, Vy}
+            // Set Vx = Vx SHL 1.
+            // (Maybe the y here is a mistake?)
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            r_v[0xF] = (r_v[_x] & 0x80) >> 7;
+            r_v[_x] = r_v[_x] << 1;
+        } else if (_op & !0xFFF) == 0x9000 {
+            // 9xy0 - SNE Vx, Vy
+            // Skip next instruction if Vx != Vy.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            let _y = ((_op & 0xF0) >> 4) as usize;
+            if r_v[_x] != r_v[_y] {
+                r_pc += 2;
+            }
         } else if (_op & !0xFFF) == 0xA000 {
             // Annn - LD I, addr
             // Set I = nnn.
@@ -102,6 +212,20 @@ async fn main() {
                 }
             }
             r_v[0xF] = unset as u8;
+        } else if (_op & !0xF00) == 0xF055 {
+            // Fx55 - LD [I], Vx
+            // Store registers V0 through Vx in memory starting at location I.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            for i in 0 ..= _x {
+                mem[r_i as usize + i] = r_v[i];
+            }
+        } else if (_op & !0xF00) == 0xF065 {
+            // Fx65 - LD Vx, [I]
+            // Read registers V0 through Vx from memory starting at location I.
+            let _x = ((_op & 0xF00) >> 8) as usize;
+            for i in 0 ..= _x {
+                r_v[i] = mem[r_i as usize + i];
+            }
         } else {
             panic!("Unimplemented opcode 0x{:0x}", _op);
         }
