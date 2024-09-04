@@ -184,16 +184,17 @@ async fn main() {
             let _n = (_op & 0xF) as usize;
             let mut unset = false;
             for i in 0 .. _n {
-                let byte = mem[i + r_i];
                 let display_index = (_y_coord + i) * WIDTH_BYTES + _x_coord / 8;
-                let prev = display[display_index];
-                display[display_index] ^= byte >> _x_offset;
-                unset = unset || ((!display[display_index] & prev) > 0);
+                let curr_1 = display[display_index];
+                let curr_2 = display[display_index + 1];
+                let next_1 = mem[i + r_i] >> _x_offset;
+                let mut next_2 = 0;
                 if _x_offset > 0 {
-                    let prev = display[display_index + 1];
-                    display[display_index + 1] ^= byte << (8 - _x_offset);
-                    unset = unset || ((!display[display_index + 1] & prev) > 0);
+                    next_2 = mem[i + r_i] << (8 - _x_offset);
                 }
+                display[display_index] ^= next_1;
+                display[display_index + 1] ^= next_2;
+                unset = unset || (!display[display_index] & curr_1) > 0 || (!display[display_index + 1] & curr_2) > 0;
             }
             r_v[0xF] = unset as u8;
         } else if (_op & !0xF00) == 0xF01E {
