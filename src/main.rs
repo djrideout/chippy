@@ -272,6 +272,8 @@ async fn main() {
             }
         }
 
+        next_frame().await;
+
         // Time at the end of this frame
         let _t1 = Instant::now();
 
@@ -280,7 +282,5 @@ async fn main() {
         if _delta < FRAME_DURATION {
             std::thread::sleep(FRAME_DURATION - _delta);
         }
-
-        next_frame().await;
     }
 }
