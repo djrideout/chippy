@@ -249,6 +249,15 @@ async fn main() {
             remaining -= 1;
         }
 
+        // Decrement timers.
+        // They decrement at 60hz, so because fps is around 60, just decrement once per frame.
+        if r_delay > 0 {
+            r_delay -= 1;
+        }
+        if r_sound > 0 {
+            r_sound -= 1;
+        }
+
         // Render display
         clear_background(BLACK);
         for i in 0 .. HEIGHT {
