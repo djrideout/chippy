@@ -1,5 +1,6 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 
+use std::time::{Duration, Instant};
 use macroquad::prelude::*;
 use clap::Parser;
 
@@ -15,10 +16,12 @@ struct Args {
     clock: u32,
 }
 
+// Constants
 const WIDTH: usize = 64;
 const WIDTH_BYTES: usize = WIDTH / 8;
 const HEIGHT: usize = 32;
 const SCALE: f32 = 10.0;
+const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
 
 #[macroquad::main("chippy")]
 async fn main() {
@@ -63,6 +66,9 @@ async fn main() {
     request_new_screen_size(WIDTH as f32 * SCALE, HEIGHT as f32 * SCALE);
 
     loop {
+        // Time at the start of this frame
+        let _t0 = Instant::now();
+
         // Remaining instructions to run for this frame
         let mut remaining = _args.clock;
 
@@ -255,6 +261,15 @@ async fn main() {
                     }
                 }
             }
+        }
+
+        // Time at the end of this frame
+        let _t1 = Instant::now();
+
+        // If the frame length is too short, delay the remaining milliseconds to limit the fps
+        let _delta = _t1.duration_since(_t0);
+        if _delta < FRAME_DURATION {
+            std::thread::sleep(FRAME_DURATION - _delta);
         }
 
         next_frame().await;
