@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.16", features = ["derive"] }
 macroquad = "0.4.13"
+rand = "0.8.5"
 
 [[bin]]
 name = "chippy"

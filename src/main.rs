@@ -1,6 +1,7 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 
 use std::time::{Duration, Instant};
+use ::rand::prelude::*;
 use macroquad::prelude::*;
 use clap::Parser;
 
@@ -245,6 +246,14 @@ async fn main() {
                 // Annn - LD I, addr
                 // Set I = nnn.
                 r_i = _nnn;
+            } else if (op & 0xF000) == 0xB000 {
+                // Bnnn - JP V0, addr
+                // Jump to location nnn + V0.
+                r_pc = _nnn + r_v[0] as usize;
+            } else if (op & 0xF000) == 0xC000 {
+                // Cxkk - RND Vx, byte
+                // Set Vx = random byte AND kk.
+                r_v[_x] = thread_rng().gen::<u8>() & _kk;
             } else if (op & 0xF000) == 0xD000 {
                 // Dxyn - DRW Vx, Vy, nibble
                 // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
@@ -321,12 +330,14 @@ async fn main() {
                 for i in 0 ..= _x {
                     mem[r_i + i] = r_v[i];
                 }
+                r_i += _x + 1;
             } else if (op & 0xF0FF) == 0xF065 {
                 // Fx65 - LD Vx, [I]
                 // Read registers V0 through Vx from memory starting at location I.
                 for i in 0 ..= _x {
                     r_v[i] = mem[r_i + i];
                 }
+                r_i += _x + 1;
             } else {
                 panic!("Unimplemented opcode 0x{:0x}", op);
             }
