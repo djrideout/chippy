@@ -188,14 +188,17 @@ async fn main() {
                 // 8xy1 - OR Vx, Vy
                 // Set Vx = Vx OR Vy.
                 r_v[_x] |= r_v[_y];
+                r_v[0xF] = 0;
             } else if (op & 0xF00F) == 0x8002 {
                 // 8xy2 - AND Vx, Vy
                 // Set Vx = Vx AND Vy.
                 r_v[_x] &= r_v[_y];
+                r_v[0xF] = 0;
             } else if (op & 0xF00F) == 0x8003 {
                 // 8xy3 - XOR Vx, Vy
                 // Set Vx = Vx XOR Vy.
                 r_v[_x] ^= r_v[_y];
+                r_v[0xF] = 0;
             } else if (op & 0xF00F) == 0x8004 {
                 // 8xy4 - ADD Vx, Vy
                 // Set Vx = Vx + Vy, set VF = carry.
@@ -215,10 +218,9 @@ async fn main() {
             } else if (op & 0xF00F) == 0x8006 {
                 // 8xy6 - SHR Vx {, Vy}
                 // Set Vx = Vx SHR 1.
-                // (Maybe the y here is a mistake?)
-                let _prev_x = r_v[_x];
-                r_v[_x] = _prev_x >> 1;
-                r_v[0xF] = _prev_x & 1;
+                let _prev_y = r_v[_y];
+                r_v[_x] = _prev_y >> 1;
+                r_v[0xF] = _prev_y & 1;
             } else if (op & 0xF00F) == 0x8007 {
                 // 8xy7 - SUBN Vx, Vy
                 // Set Vx = Vy - Vx, set VF = NOT borrow.
@@ -232,10 +234,9 @@ async fn main() {
             } else if (op & 0xF00F) == 0x800E {
                 // 8xyE - SHL Vx {, Vy}
                 // Set Vx = Vx SHL 1.
-                // (Maybe the y here is a mistake?)
-                let _prev_x = r_v[_x];
-                r_v[_x] = _prev_x << 1;
-                r_v[0xF] = (_prev_x & 0x80) >> 7;
+                let _prev_y = r_v[_y];
+                r_v[_x] = _prev_y << 1;
+                r_v[0xF] = (_prev_y & 0x80) >> 7;
             } else if (op & 0xF000) == 0x9000 {
                 // 9xy0 - SNE Vx, Vy
                 // Skip next instruction if Vx != Vy.
@@ -265,7 +266,7 @@ async fn main() {
                 let _n = (op & 0xF) as usize;
                 let mut unset = false;
                 for i in 0 .. _n {
-                    let display_index = (_y_coord + i) * WIDTH_BYTES + _x_coord / 8;
+                    let display_index = ((_y_coord + i) * WIDTH_BYTES + _x_coord / 8) % 256;
                     let curr_1 = display[display_index];
                     let curr_2 = display[display_index + 1];
                     let next_1 = mem[i + r_i] >> _x_offset;
