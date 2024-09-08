@@ -43,9 +43,9 @@ const KEYMAP: [KeyCode; 16] = [
 ];
 
 // Constants
-const WIDTH: usize = 64;
-const HEIGHT: usize = 32;
-const SCALE: f32 = 10.0;
+const WIDTH: usize = 128;
+const HEIGHT: usize = 64;
+const SCALE: f32 = 5.0;
 const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
 
 #[macroquad::main("chippy")]
@@ -91,7 +91,8 @@ async fn main() {
     let mut prev_op = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
 
     // Display (64x32 monochrome)
-    let mut display: [u64; HEIGHT] = [0; HEIGHT];
+    let mut high_res = false; // For high-res resolution mode
+    let mut display: [u128; HEIGHT] = [0; HEIGHT];
     request_new_screen_size(WIDTH as f32 * SCALE, HEIGHT as f32 * SCALE);
 
     // Key press states
@@ -142,6 +143,14 @@ async fn main() {
                 // Return from a subroutine.
                 r_sp -= 1;
                 r_pc = stack[r_sp] as usize;
+            } else if op == 0x00FE {
+                // 00FE - LOW
+                // Disable high-resolution mode.
+                high_res = false;
+            } else if op == 0x00FF {
+                // 00FF - HIGH
+                // Enable high-resolution mode.
+                high_res = true;
             } else if (op & 0xF000) == 0x1000 {
                 // 1nnn - JP addr
                 // Jump to location nnn.
@@ -268,7 +277,7 @@ async fn main() {
                     if _row_i >= HEIGHT {
                         continue;
                     }
-                    let _sprite_row = mem[i + r_i] as u64;
+                    let _sprite_row = mem[i + r_i] as u128;
                     let _curr = display[_row_i];
                     let _shift = WIDTH - 1 - _x_coord;
                     if _shift < 7 {
@@ -357,12 +366,13 @@ async fn main() {
         }
 
         // Render display
+        let _true_scale = SCALE * ((!high_res as u32) << 1) as f32;
         clear_background(BLACK);
         for i in 0 .. HEIGHT {
             let _row = display[i];
             for j in 0 .. WIDTH {
                 if _row & (1 << j) > 0 {
-                    draw_rectangle(SCALE * (WIDTH - 1 - j) as f32, SCALE * i as f32, SCALE, SCALE, WHITE);
+                    draw_rectangle(_true_scale * (WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, WHITE);
                 }
             }
         }
