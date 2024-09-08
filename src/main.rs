@@ -260,7 +260,6 @@ async fn main() {
                 // Sprites are 8 pixels (8 bits/1 byte) wide and from 1 to 15 pixels in height,
                 // So each byte is one row of the sprite.
                 let _x_coord = r_v[_x] as usize;
-                let _x_offset = _x_coord % 8;
                 let _y_coord = r_v[_y] as usize;
                 let _n = (op & 0xF) as usize;
                 let mut unset = false;
