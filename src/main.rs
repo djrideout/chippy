@@ -283,7 +283,12 @@ async fn main() {
             } else if (op & 0xF000) == 0xB000 {
                 // Bnnn - JP V0, addr
                 // Jump to location nnn + V0.
-                r_pc = _nnn + r_v[0] as usize;
+                let mut loc = r_v[0] as usize;
+                if _args.target == Target::SuperLegacy || _args.target == Target::SuperModern {
+                    let _i = (_nnn & 0xF00) >> 8;
+                    loc = r_v[_i] as usize;
+                }
+                r_pc = _nnn + loc;
             } else if (op & 0xF000) == 0xC000 {
                 // Cxkk - RND Vx, byte
                 // Set Vx = random byte AND kk.
