@@ -361,14 +361,18 @@ async fn main() {
                 for i in 0 ..= _x {
                     mem[r_i + i] = r_v[i];
                 }
-                r_i += _x + 1;
+                if _args.target == Target::Chip || _args.target == Target::XO {
+                    r_i += _x + 1;
+                }
             } else if (op & 0xF0FF) == 0xF065 {
                 // Fx65 - LD Vx, [I]
                 // Read registers V0 through Vx from memory starting at location I.
                 for i in 0 ..= _x {
                     r_v[i] = mem[r_i + i];
                 }
-                r_i += _x + 1;
+                if _args.target == Target::Chip || _args.target == Target::XO {
+                    r_i += _x + 1;
+                }
             } else {
                 panic!("Unimplemented opcode 0x{:0x}", op);
             }
