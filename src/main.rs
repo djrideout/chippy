@@ -44,7 +44,6 @@ const KEYMAP: [KeyCode; 16] = [
 
 // Constants
 const WIDTH: usize = 64;
-const WIDTH_BYTES: usize = WIDTH / 8;
 const HEIGHT: usize = 32;
 const SCALE: f32 = 10.0;
 const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
@@ -92,7 +91,7 @@ async fn main() {
     let mut prev_op = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
 
     // Display (64x32 monochrome)
-    let mut display: [u8; WIDTH_BYTES * HEIGHT] = [0; WIDTH_BYTES * HEIGHT];
+    let mut display: [u64; HEIGHT] = [0; HEIGHT];
     request_new_screen_size(WIDTH as f32 * SCALE, HEIGHT as f32 * SCALE);
 
     // Key press states
@@ -135,7 +134,7 @@ async fn main() {
             if op == 0x00E0 {
                 // 00E0 - CLS
                 // Clear the display.
-                for i in 0 .. WIDTH_BYTES * HEIGHT {
+                for i in 0 .. HEIGHT {
                     display[i] = 0;
                 }
             } else if op == 0x00EE {
@@ -266,17 +265,19 @@ async fn main() {
                 let _n = (op & 0xF) as usize;
                 let mut unset = false;
                 for i in 0 .. _n {
-                    let display_index = ((_y_coord + i) * WIDTH_BYTES + _x_coord / 8) % 256;
-                    let curr_1 = display[display_index];
-                    let curr_2 = display[display_index + 1];
-                    let next_1 = mem[i + r_i] >> _x_offset;
-                    let mut next_2 = 0;
-                    if _x_offset > 0 {
-                        next_2 = mem[i + r_i] << (8 - _x_offset);
+                    let _row_i = _y_coord + i;
+                    if _row_i >= HEIGHT {
+                        continue;
                     }
-                    display[display_index] ^= next_1;
-                    display[display_index + 1] ^= next_2;
-                    unset = unset || (!display[display_index] & curr_1) > 0 || (!display[display_index + 1] & curr_2) > 0;
+                    let _sprite_row = mem[i + r_i] as u64;
+                    let _curr = display[_row_i];
+                    let _shift = WIDTH - 1 - _x_coord;
+                    if _shift < 7 {
+                        display[_row_i] ^= _sprite_row >> (7 - _shift);
+                    } else {
+                        display[_row_i] ^= _sprite_row << (_shift - 7);
+                    }
+                    unset = unset || (!display[_row_i] & _curr) > 0;
                 }
                 r_v[0xF] = unset as u8;
             } else if (op & 0xF0FF) == 0xE09E {
@@ -359,13 +360,10 @@ async fn main() {
         // Render display
         clear_background(BLACK);
         for i in 0 .. HEIGHT {
-            for j in 0 .. WIDTH_BYTES {
-                let byte = display[i * WIDTH_BYTES + j];
-                for k in 0 .. 8 {
-                    let pixel = byte >> (7 - k) & 1;
-                    if pixel == 1 {
-                        draw_rectangle(SCALE * (j as u32 * 8 + k) as f32, SCALE * i as f32, SCALE * 1.0, SCALE * 1.0, WHITE);
-                    }
+            let _row = display[i];
+            for j in 0 .. WIDTH {
+                if _row & (1 << j) > 0 {
+                    draw_rectangle(SCALE * (WIDTH - 1 - j) as f32, SCALE * i as f32, SCALE, SCALE, WHITE);
                 }
             }
         }
