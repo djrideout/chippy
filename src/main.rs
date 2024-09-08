@@ -245,9 +245,12 @@ async fn main() {
             } else if (op & 0xF00F) == 0x8006 {
                 // 8xy6 - SHR Vx {, Vy}
                 // Set Vx = Vx SHR 1.
-                let _prev_y = r_v[_y];
-                r_v[_x] = _prev_y >> 1;
-                r_v[0xF] = _prev_y & 1;
+                let mut prev = r_v[_y];
+                if _args.target == Target::SuperLegacy || _args.target == Target::SuperModern {
+                    prev = r_v[_x];
+                }
+                r_v[_x] = prev >> 1;
+                r_v[0xF] = prev & 1;
             } else if (op & 0xF00F) == 0x8007 {
                 // 8xy7 - SUBN Vx, Vy
                 // Set Vx = Vy - Vx, set VF = NOT borrow.
@@ -261,9 +264,12 @@ async fn main() {
             } else if (op & 0xF00F) == 0x800E {
                 // 8xyE - SHL Vx {, Vy}
                 // Set Vx = Vx SHL 1.
-                let _prev_y = r_v[_y];
-                r_v[_x] = _prev_y << 1;
-                r_v[0xF] = (_prev_y & 0x80) >> 7;
+                let mut prev = r_v[_y];
+                if _args.target == Target::SuperLegacy || _args.target == Target::SuperModern {
+                    prev = r_v[_x];
+                }
+                r_v[_x] = prev << 1;
+                r_v[0xF] = (prev & 0x80) >> 7;
             } else if (op & 0xF000) == 0x9000 {
                 // 9xy0 - SNE Vx, Vy
                 // Skip next instruction if Vx != Vy.
