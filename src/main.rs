@@ -3,7 +3,16 @@
 use std::time::{Duration, Instant};
 use ::rand::prelude::*;
 use macroquad::prelude::*;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+
+#[derive(ValueEnum, Debug, Clone, Default, PartialEq)]
+enum Target {
+    #[default]
+    Chip,
+    SuperModern,
+    SuperLegacy,
+    XO
+}
 
 // Command line arguments
 #[derive(Parser, Debug)]
@@ -15,6 +24,10 @@ struct Args {
     // The number of instructions to run per frame
     #[arg(short, long, default_value_t = 8)]
     clock: u32,
+
+    // The platform you are targetting
+    #[arg(short, long, default_value_t, value_enum)]
+    target: Target,
 }
 
 // Keymap (Assumes QWERTY for now)
@@ -196,17 +209,23 @@ async fn main() {
                 // 8xy1 - OR Vx, Vy
                 // Set Vx = Vx OR Vy.
                 r_v[_x] |= r_v[_y];
-                r_v[0xF] = 0;
+                if _args.target == Target::Chip {
+                    r_v[0xF] = 0;
+                }
             } else if (op & 0xF00F) == 0x8002 {
                 // 8xy2 - AND Vx, Vy
                 // Set Vx = Vx AND Vy.
                 r_v[_x] &= r_v[_y];
-                r_v[0xF] = 0;
+                if _args.target == Target::Chip {
+                    r_v[0xF] = 0;
+                }
             } else if (op & 0xF00F) == 0x8003 {
                 // 8xy3 - XOR Vx, Vy
                 // Set Vx = Vx XOR Vy.
                 r_v[_x] ^= r_v[_y];
-                r_v[0xF] = 0;
+                if _args.target == Target::Chip {
+                    r_v[0xF] = 0;
+                }
             } else if (op & 0xF00F) == 0x8004 {
                 // 8xy4 - ADD Vx, Vy
                 // Set Vx = Vx + Vy, set VF = carry.
