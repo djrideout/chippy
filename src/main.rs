@@ -22,7 +22,7 @@ struct Args {
     input: String,
 
     // The number of instructions to run per frame
-    #[arg(short, long, default_value_t = 8)]
+    #[arg(short, long, default_value_t = 16)]
     clock: u32,
 
     // The platform you are targetting
@@ -155,6 +155,8 @@ async fn main() {
         let mut remaining = _args.clock;
 
         while remaining > 0 {
+            remaining -= 1;
+
             // Get opcode
             let mut op: u16 = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
             if halting {
@@ -321,28 +323,35 @@ async fn main() {
                 // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
                 // Sprites are 8 pixels (8 bits/1 byte) wide and from 1 to 15 pixels in height,
                 // So each byte is one row of the sprite.
-                let _x_mod = WIDTH >> !high_res as u8;
-                let _y_mod = HEIGHT >> !high_res as u8;
-                let _x_coord = r_v[_x] as usize % _x_mod;
-                let _y_coord = r_v[_y] as usize % _y_mod;
-                let _n = (op & 0xF) as usize;
-                let mut unset = false;
-                for i in 0 .. _n {
-                    let _row_i = _y_coord + i;
-                    if _row_i >= HEIGHT {
-                        continue;
+                halting = true;
+                if remaining == 0
+                    || _args.target == Target::SuperModern
+                    || _args.target == Target::SuperLegacy && high_res
+                    || _args.target == Target::XO {
+                    halting = false;
+                    let _x_mod = WIDTH >> !high_res as u8;
+                    let _y_mod = HEIGHT >> !high_res as u8;
+                    let _x_coord = r_v[_x] as usize % _x_mod;
+                    let _y_coord = r_v[_y] as usize % _y_mod;
+                    let _n = (op & 0xF) as usize;
+                    let mut unset = false;
+                    for i in 0 .. _n {
+                        let _row_i = _y_coord + i;
+                        if _row_i >= HEIGHT {
+                            continue;
+                        }
+                        let _sprite_row = mem[i + r_i] as u128;
+                        let _curr = display[_row_i];
+                        let _shift = WIDTH - 1 - _x_coord;
+                        if _shift < 7 {
+                            display[_row_i] ^= _sprite_row >> (7 - _shift);
+                        } else {
+                            display[_row_i] ^= _sprite_row << (_shift - 7);
+                        }
+                        unset = unset || (!display[_row_i] & _curr) > 0;
                     }
-                    let _sprite_row = mem[i + r_i] as u128;
-                    let _curr = display[_row_i];
-                    let _shift = WIDTH - 1 - _x_coord;
-                    if _shift < 7 {
-                        display[_row_i] ^= _sprite_row >> (7 - _shift);
-                    } else {
-                        display[_row_i] ^= _sprite_row << (_shift - 7);
-                    }
-                    unset = unset || (!display[_row_i] & _curr) > 0;
+                    r_v[0xF] = unset as u8;
                 }
-                r_v[0xF] = unset as u8;
             } else if (op & 0xF0FF) == 0xE09E {
                 // Ex9E - SKP Vx
                 // Skip next instruction if key with the value of Vx is pressed.
@@ -416,7 +425,6 @@ async fn main() {
             }
 
             prev_op = op;
-            remaining -= 1;
         }
 
         // Decrement timers.
