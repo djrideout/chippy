@@ -120,7 +120,7 @@ async fn main() {
         i += 1;
     }
 
-    // Halting flag (waiting for input)
+    // Halting flag (waiting for input/drawing)
     let mut halting = false;
 
     // Previous opcode, for halting purposes
