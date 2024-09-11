@@ -78,7 +78,7 @@ const FONT_SET: [u8; 80] = [
 // Constants
 const WIDTH: usize = 128;
 const HEIGHT: usize = 64;
-const SCALE: f32 = 5.0;
+const SCALE: usize = 6;
 const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
 
 #[macroquad::main("chippy")]
@@ -129,7 +129,7 @@ async fn main() {
     // Display (64x32 monochrome)
     let mut high_res = false; // For high-res resolution mode
     let mut display: [u128; HEIGHT] = [0; HEIGHT];
-    request_new_screen_size(WIDTH as f32 * SCALE, HEIGHT as f32 * SCALE);
+    request_new_screen_size((WIDTH * SCALE) as f32, (HEIGHT * SCALE) as f32);
 
     // Key press states
     let mut prev_keys: [bool; 16] = [false; 16];
@@ -440,7 +440,7 @@ async fn main() {
         }
 
         // Render display
-        let _true_scale = SCALE * ((!high_res as u32) << 1) as f32;
+        let _true_scale = (SCALE << !high_res as u32) as f32;
         clear_background(BLACK);
         for i in 0 .. HEIGHT {
             let _row = display[i];
