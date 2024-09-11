@@ -336,19 +336,22 @@ async fn main() {
                     let _n = (op & 0xF) as usize;
                     let mut unset = false;
                     for i in 0 .. _n {
-                        let _row_i = _y_coord + i;
-                        if _row_i >= HEIGHT {
-                            continue;
+                        let mut row_i = _y_coord + i;
+                        if row_i >= _y_mod {
+                            if _args.target != Target::XO {
+                                continue;
+                            }
+                            row_i %= _y_mod;
                         }
                         let _sprite_row = mem[i + r_i] as u128;
-                        let _curr = display[_row_i];
+                        let _curr = display[row_i];
                         let _shift = WIDTH - 1 - _x_coord;
                         if _shift < 7 {
-                            display[_row_i] ^= _sprite_row >> (7 - _shift);
+                            display[row_i] ^= _sprite_row >> (7 - _shift);
                         } else {
-                            display[_row_i] ^= _sprite_row << (_shift - 7);
+                            display[row_i] ^= _sprite_row << (_shift - 7);
                         }
-                        unset = unset || (!display[_row_i] & _curr) > 0;
+                        unset = unset || (!display[row_i] & _curr) > 0;
                     }
                     r_v[0xF] = unset as u8;
                 }
