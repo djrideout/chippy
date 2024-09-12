@@ -158,11 +158,19 @@ async fn main() {
             remaining -= 1;
 
             // Get opcode
-            let mut op: u16 = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
+            let mut op = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
             if halting {
                 op = prev_op;
             } else {
                 r_pc += 2;
+            }
+
+            // F000 is a 4-byte instruction, so if we need to skip an instruction and PC is on F000,
+            // we should skip 4 bytes instead of 2.
+            let _next_op = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
+            let mut skip_count: usize = 2;
+            if _next_op == 0xF000 {
+                skip_count = 4;
             }
 
             // Decode opcode
@@ -181,6 +189,10 @@ async fn main() {
                 // Return from a subroutine.
                 r_sp -= 1;
                 r_pc = stack[r_sp] as usize;
+            } else if op == 0x00FD && _args.target != Target::Chip {
+                // 00FD - EXIT
+                // Exit the interpreter.
+                return;
             } else if op == 0x00FE && _args.target != Target::Chip {
                 // 00FE - LOW
                 // Disable high-resolution mode.
@@ -213,19 +225,31 @@ async fn main() {
                 // 3xkk - SE Vx, byte
                 // Skip next instruction if Vx = kk.
                 if r_v[_x] == _kk {
-                    r_pc += 2;
+                    r_pc += skip_count;
                 }
             } else if (op & 0xF000) == 0x4000 {
                 // 4xkk - SNE Vx, byte
                 // Skip next instruction if Vx != kk.
                 if r_v[_x] != _kk {
-                    r_pc += 2;
+                    r_pc += skip_count;
                 }
-            } else if (op & 0xF000) == 0x5000 {
+            } else if (op & 0xF00F) == 0x5000 {
                 // 5xy0 - SE Vx, Vy
                 // Skip next instruction if Vx = Vy.
                 if r_v[_x] == r_v[_y] {
-                    r_pc += 2;
+                    r_pc += skip_count;
+                }
+            } else if (op & 0xF00F) == 0x5002 && _args.target == Target::XO {
+                // 5xy2
+                // Write registers vX to vY to memory pointed to by I.
+                for _i in _x ..= _y {
+                    mem[r_i + _i - _x] = r_v[_i];
+                }
+            } else if (op & 0xF00F) == 0x5003 && _args.target == Target::XO {
+                // 5xy3
+                // Load registers vX to vY from memory pointed to by I.
+                for _i in _x ..= _y {
+                    r_v[_i] = mem[r_i + _i - _x];
                 }
             } else if (op & 0xF000) == 0x6000 {
                 // 6xkk - LD Vx, byte
@@ -309,15 +333,15 @@ async fn main() {
                 // 9xy0 - SNE Vx, Vy
                 // Skip next instruction if Vx != Vy.
                 if r_v[_x] != r_v[_y] {
-                    r_pc += 2;
+                    r_pc += skip_count;
                 }
             } else if (op & 0xF000) == 0xA000 {
                 // Annn - LD I, addr
                 // Set I = nnn.
                 r_i = _nnn;
             } else if (op & 0xF000) == 0xB000 {
-                // Bnnn - JP V0, addr
-                // Jump to location nnn + V0.
+                // Bnnn - JP V0, addr / Bxnn - JP Vx, addr
+                // Jump to location nnn + V0, or xnn + Vx on super.
                 let mut loc = r_v[0] as usize;
                 if _args.target == Target::SuperLegacy || _args.target == Target::SuperModern {
                     let _i = (_nnn & 0xF00) >> 8;
@@ -369,14 +393,19 @@ async fn main() {
                 // Ex9E - SKP Vx
                 // Skip next instruction if key with the value of Vx is pressed.
                 if curr_keys[r_v[_x] as usize] {
-                    r_pc += 2;
+                    r_pc += skip_count;
                 }
             } else if (op & 0xF0FF) == 0xE0A1 {
                 // ExA1 - SKNP Vx
                 // Skip next instruction if key with the value of Vx is not pressed.
                 if !curr_keys[r_v[_x] as usize] {
-                    r_pc += 2;
+                    r_pc += skip_count;
                 }
+            } else if op == 0xF000 && _args.target == Target::XO {
+                // F000
+                // Assign next 16 bit word to I, and set PC behind it. This is a four byte instruction.
+                r_i = ((mem[r_pc] as usize) << 8) | mem[r_pc + 1] as usize;
+                r_pc += 2;
             } else if (op & 0xF0FF) == 0xF007 {
                 // Fx07 - LD Vx, DT
                 // Set Vx = delay timer value.
