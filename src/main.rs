@@ -1,4 +1,4 @@
-// Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+// Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
 
 use std::time::{Duration, Instant};
 use ::rand::prelude::*;
@@ -7,11 +7,11 @@ use clap::{Parser, ValueEnum};
 
 #[derive(ValueEnum, Debug, Clone, Default, PartialEq)]
 enum Target {
+    Chip, // This is "chip-8" in Gulrak's opcode table
     #[default]
-    Chip,
-    SuperModern,
-    SuperLegacy,
-    XO
+    SuperModern, // This is "schipc" in Gulrak's opcode table
+    SuperLegacy, // This is "schip-1.1" in Gulrak's opcode table
+    XO // This is "xo-chip" in Gulrak's opcode table
 }
 
 // Command line arguments
@@ -181,14 +181,24 @@ async fn main() {
                 // Return from a subroutine.
                 r_sp -= 1;
                 r_pc = stack[r_sp] as usize;
-            } else if op == 0x00FE {
+            } else if op == 0x00FE && _args.target != Target::Chip {
                 // 00FE - LOW
                 // Disable high-resolution mode.
                 high_res = false;
-            } else if op == 0x00FF {
+                if _args.target != Target::SuperLegacy {
+                    for i in 0 .. HEIGHT {
+                        display[i] = 0;
+                    }
+                }
+            } else if op == 0x00FF && _args.target != Target::Chip {
                 // 00FF - HIGH
                 // Enable high-resolution mode.
                 high_res = true;
+                if _args.target != Target::SuperLegacy {
+                    for i in 0 .. HEIGHT {
+                        display[i] = 0;
+                    }
+                }
             } else if (op & 0xF000) == 0x1000 {
                 // 1nnn - JP addr
                 // Jump to location nnn.
