@@ -353,10 +353,11 @@ async fn main() {
                 // Set Vx = random byte AND kk.
                 r_v[_x] = thread_rng().gen::<u8>() & _kk;
             } else if (op & 0xF000) == 0xD000 {
-                // Dxyn - DRW Vx, Vy, nibble
+                // Dxyn - DRW Vx, Vy, nibble / Dxy0 - DRW Vx, Vy, 0
                 // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
                 // Sprites are 8 pixels (8 bits/1 byte) wide and from 1 to 15 pixels in height,
                 // So each byte is one row of the sprite.
+                // Draws a 16x16 sprite if n=0 and platform is not CHIP-8. (8x16 on super legacy in low-res mode)
                 halting = true;
                 if remaining == 0
                     || _args.target == Target::SuperModern
@@ -367,9 +368,16 @@ async fn main() {
                     let _y_mod = HEIGHT >> !high_res as u8;
                     let _x_coord = r_v[_x] as usize % _x_mod;
                     let _y_coord = r_v[_y] as usize % _y_mod;
-                    let _n = (op & 0xF) as usize;
+                    let mut sprite_height = (op & 0xF) as usize;
+                    let mut sprite_width = 8 as usize;
+                    if _args.target != Target::Chip && sprite_height == 0 {
+                        sprite_height = 16;
+                        if _args.target != Target::SuperLegacy || high_res {
+                            sprite_width = 16;
+                        }
+                    }
                     let mut unset = false;
-                    for i in 0 .. _n {
+                    for i in 0 .. sprite_height {
                         let mut row_i = _y_coord + i;
                         if row_i >= _y_mod {
                             if _args.target != Target::XO {
@@ -377,13 +385,16 @@ async fn main() {
                             }
                             row_i %= _y_mod;
                         }
-                        let _sprite_row = mem[i + r_i] as u128;
+                        let mut sprite_row = mem[(sprite_width >> 3) * i + r_i] as u128;
+                        if sprite_width == 16 {
+                            sprite_row = (sprite_row << 8) | mem[(sprite_width >> 3) * i + r_i + 1] as u128;
+                        }
                         let _curr = display[row_i];
                         let _shift = WIDTH - 1 - _x_coord;
-                        if _shift < 7 {
-                            display[row_i] ^= _sprite_row >> (7 - _shift);
+                        if _shift < sprite_width - 1 {
+                            display[row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
                         } else {
-                            display[row_i] ^= _sprite_row << (_shift - 7);
+                            display[row_i] ^= sprite_row << (_shift - sprite_width + 1);
                         }
                         unset = unset || (!display[row_i] & _curr) > 0;
                     }
