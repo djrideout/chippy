@@ -204,6 +204,7 @@ async fn main() {
             }
 
             // Decode opcode
+            let _n = (op & 0xF) as usize;
             let _x = ((op & 0xF00) >> 8) as usize;
             let _y = ((op & 0xF0) >> 4) as usize;
             let _kk = (op & 0xFF) as u8;
@@ -230,6 +231,30 @@ async fn main() {
                         // Return from a subroutine.
                         r_sp -= 1;
                         r_pc = stack[r_sp] as usize;
+                    }
+                    0x00FB if _args.target != Target::Chip => {
+                        // 00FB
+                        // Scroll screen content right four pixels, in XO-CHIP only selected bit planes are scrolled
+                        for p in 0..PLANE_COUNT {
+                            if (enabled_planes >> p) & 1 == 0 {
+                                continue;
+                            }
+                            for i in 0 .. HEIGHT {
+                                planes[p][i] = planes[p][i] >> 4;
+                            }
+                        }
+                    }
+                    0x00FC if _args.target != Target::Chip => {
+                        // 00FC
+                        // Scroll screen content left four pixels, in XO-CHIP only selected bit planes are scrolled
+                        for p in 0..PLANE_COUNT {
+                            if (enabled_planes >> p) & 1 == 0 {
+                                continue;
+                            }
+                            for i in 0 .. HEIGHT {
+                                planes[p][i] = planes[p][i] << 4;
+                            }
+                        }
                     }
                     0x00FD if _args.target != Target::Chip => {
                         // 00FD - EXIT
@@ -265,6 +290,48 @@ async fn main() {
                         // Assign next 16 bit word to I, and set PC behind it. This is a four byte instruction.
                         r_i = ((mem[r_pc] as usize) << 8) | mem[r_pc + 1] as usize;
                         r_pc += 2;
+                    }
+                    _ => opcode_matched = false
+                }
+                if opcode_matched {
+                    break 'opcodes;
+                }
+
+                // 1-nibble param opcodes, but the param is the least significant nibble
+                opcode_matched = true;
+                match op & 0xFFF0 {
+                    0x00C0 if _args.target != Target::Chip => {
+                        // 00Cn
+                        // Scroll screen content down N pixels, in XO-CHIP only selected bit planes are scrolled
+                        let _count = _n >> (_args.target == Target::SuperLegacy && !high_res) as u8;
+                        for p in 0..PLANE_COUNT {
+                            if (enabled_planes >> p) & 1 == 0 {
+                                continue;
+                            }
+                            for i in (0..HEIGHT - 1).rev() {
+                                if i < _count {
+                                    planes[p][i] = 0;
+                                    continue;
+                                }
+                                planes[p][i] = planes[p][i - _count];
+                            }
+                        }
+                    }
+                    0x00D0 if _args.target == Target::XO => {
+                        // 00Dn
+                        // Scroll screen content up N hires pixel, in XO-CHIP only selected planes are scrolled
+                        for p in 0..PLANE_COUNT {
+                            if (enabled_planes >> p) & 1 == 0 {
+                                continue;
+                            }
+                            for i in 0..HEIGHT - 1 {
+                                if i + _n >= HEIGHT {
+                                    planes[p][i] = 0;
+                                    continue;
+                                }
+                                planes[p][i] = planes[p][i + _n];
+                            }
+                        }
                     }
                     _ => opcode_matched = false
                 }
