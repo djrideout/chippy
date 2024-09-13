@@ -396,6 +396,12 @@ async fn main() {
                         } else {
                             display[row_i] ^= sprite_row << (_shift - sprite_width + 1);
                         }
+                        if _args.target == Target::XO && _x_coord > _x_mod - sprite_width {
+                            display[row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
+                        }
+                        if !high_res {
+                            display[row_i] &= (!0u64 as u128) << 64;
+                        }
                         unset = unset || (!display[row_i] & _curr) > 0;
                     }
                     r_v[0xF] = unset as u8;
