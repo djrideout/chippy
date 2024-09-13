@@ -130,7 +130,7 @@ async fn main() {
     let mut stack: [u16; 16] = [0; 16];
 
     // Memory
-    let mut mem: [u8; 0x1000] = [0; 0x1000];
+    let mut mem: [u8; 0x10000] = [0; 0x10000]; // only XO-CHIP officially supports 0x10000, the rest have 0x1000 but just use the full range for simplicity
     // Load fonts into memory
     mem[..SMALL_FONT_SET.len()].copy_from_slice(&SMALL_FONT_SET); // 5-byte font
     mem[SMALL_FONT_SET.len()..SMALL_FONT_SET.len() + BIG_FONT_SET.len()].copy_from_slice(&BIG_FONT_SET); // 10-byte font
@@ -563,7 +563,7 @@ async fn main() {
                                 if _shift < sprite_width - 1 {
                                     display[row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
                                 } else {
-                                    display[row_i] ^= sprite_row << (_shift - sprite_width + 1);
+                                    display[row_i] ^= sprite_row << (_shift - (sprite_width - 1));
                                 }
                                 if _args.target == Target::XO && _x_coord > _x_mod - sprite_width {
                                     display[row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
