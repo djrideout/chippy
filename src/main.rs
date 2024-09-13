@@ -100,6 +100,11 @@ const WIDTH: usize = 128;
 const HEIGHT: usize = 64;
 const SCALE: usize = 6;
 const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
+const PLANE_COUNT: usize = 2;
+const PLANE_COLORS: [Color; 2] = [
+    BLACK,
+    GRAY
+];
 
 #[macroquad::main("chippy")]
 async fn main() {
@@ -148,8 +153,12 @@ async fn main() {
     let mut prev_op = ((mem[r_pc] as u16) << 8) | mem[r_pc + 1] as u16;
 
     // Display (64x32 monochrome)
+    let mut enabled_planes: u8 = 0b01; // Flags for which of the 2 planes to draw on. If the bit is set, draw on the plane.
     let mut high_res = false; // For high-res resolution mode
-    let mut display: [u128; HEIGHT] = [0; HEIGHT];
+    let mut planes: [[u128; HEIGHT]; PLANE_COUNT] = [
+        [0; HEIGHT],
+        [0; HEIGHT]
+    ];
     request_new_screen_size((WIDTH * SCALE) as f32, (HEIGHT * SCALE) as f32);
 
     // Key press states
@@ -207,8 +216,13 @@ async fn main() {
                     0x00E0 => {
                         // 00E0 - CLS
                         // Clear the display.
-                        for i in 0 .. HEIGHT {
-                            display[i] = 0;
+                        for p in 0..PLANE_COUNT {
+                            if (enabled_planes >> p) & 1 == 0 {
+                                continue;
+                            }
+                            for i in 0 .. HEIGHT {
+                                planes[p][i] = 0;
+                            }
                         }
                     }
                     0x00EE => {
@@ -227,8 +241,10 @@ async fn main() {
                         // Disable high-resolution mode.
                         high_res = false;
                         if _args.target != Target::SuperLegacy {
-                            for i in 0 .. HEIGHT {
-                                display[i] = 0;
+                            for p in 0..PLANE_COUNT {
+                                for i in 0 .. HEIGHT {
+                                    planes[p][i] = 0;
+                                }
                             }
                         }
                     }
@@ -237,8 +253,10 @@ async fn main() {
                         // Enable high-resolution mode.
                         high_res = true;
                         if _args.target != Target::SuperLegacy {
-                            for i in 0 .. HEIGHT {
-                                display[i] = 0;
+                            for p in 0..PLANE_COUNT {
+                                for i in 0 .. HEIGHT {
+                                    planes[p][i] = 0;
+                                }
                             }
                         }
                     }
@@ -270,6 +288,11 @@ async fn main() {
                         if !curr_keys[r_v[_x] as usize] {
                             r_pc += skip_count;
                         }
+                    }
+                    0xF001 if _args.target == Target::XO => {
+                        // Fx01
+                        // Select bit planes to draw on to x (not vX) when drawing with Dxy0/Dxyn
+                        enabled_planes = (_x & 0b11) as u8;
                     }
                     0xF007 => {
                         // Fx07 - LD Vx, DT
@@ -533,47 +556,52 @@ async fn main() {
                             || _args.target == Target::SuperLegacy && high_res
                             || _args.target == Target::XO {
                             halting = false;
-                            let _x_mod = WIDTH >> !high_res as u8;
-                            let _y_mod = HEIGHT >> !high_res as u8;
-                            let _x_coord = r_v[_x] as usize % _x_mod;
-                            let _y_coord = r_v[_y] as usize % _y_mod;
-                            let mut sprite_height = (op & 0xF) as usize;
-                            let mut sprite_width = 8 as usize;
-                            if _args.target != Target::Chip && sprite_height == 0 {
-                                sprite_height = 16;
-                                if _args.target != Target::SuperLegacy || high_res {
-                                    sprite_width = 16;
+                            for p in 0..PLANE_COUNT {
+                                if (enabled_planes >> p) & 1 == 0 {
+                                    continue;
                                 }
-                            }
-                            let mut unset = false;
-                            for i in 0 .. sprite_height {
-                                let mut row_i = _y_coord + i;
-                                if row_i >= _y_mod {
-                                    if _args.target != Target::XO {
-                                        continue;
+                                let _x_mod = WIDTH >> !high_res as u8;
+                                let _y_mod = HEIGHT >> !high_res as u8;
+                                let _x_coord = r_v[_x] as usize % _x_mod;
+                                let _y_coord = r_v[_y] as usize % _y_mod;
+                                let mut sprite_height = (op & 0xF) as usize;
+                                let mut sprite_width = 8 as usize;
+                                if _args.target != Target::Chip && sprite_height == 0 {
+                                    sprite_height = 16;
+                                    if _args.target != Target::SuperLegacy || high_res {
+                                        sprite_width = 16;
                                     }
-                                    row_i %= _y_mod;
                                 }
-                                let mut sprite_row = mem[(sprite_width >> 3) * i + r_i] as u128;
-                                if sprite_width == 16 {
-                                    sprite_row = (sprite_row << 8) | mem[(sprite_width >> 3) * i + r_i + 1] as u128;
+                                let mut unset = false;
+                                for i in 0 .. sprite_height {
+                                    let mut row_i = _y_coord + i;
+                                    if row_i >= _y_mod {
+                                        if _args.target != Target::XO {
+                                            continue;
+                                        }
+                                        row_i %= _y_mod;
+                                    }
+                                    let mut sprite_row = mem[(sprite_width >> 3) * i + r_i] as u128;
+                                    if sprite_width == 16 {
+                                        sprite_row = (sprite_row << 8) | mem[(sprite_width >> 3) * i + r_i + 1] as u128;
+                                    }
+                                    let _curr = planes[p][row_i];
+                                    let _shift = WIDTH - 1 - _x_coord;
+                                    if _shift < sprite_width - 1 {
+                                        planes[p][row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
+                                    } else {
+                                        planes[p][row_i] ^= sprite_row << (_shift - (sprite_width - 1));
+                                    }
+                                    if _args.target == Target::XO && _x_coord > _x_mod - sprite_width {
+                                        planes[p][row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
+                                    }
+                                    if !high_res {
+                                        planes[p][row_i] &= (!0u64 as u128) << 64;
+                                    }
+                                    unset = unset || (!planes[p][row_i] & _curr) > 0;
                                 }
-                                let _curr = display[row_i];
-                                let _shift = WIDTH - 1 - _x_coord;
-                                if _shift < sprite_width - 1 {
-                                    display[row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
-                                } else {
-                                    display[row_i] ^= sprite_row << (_shift - (sprite_width - 1));
-                                }
-                                if _args.target == Target::XO && _x_coord > _x_mod - sprite_width {
-                                    display[row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
-                                }
-                                if !high_res {
-                                    display[row_i] &= (!0u64 as u128) << 64;
-                                }
-                                unset = unset || (!display[row_i] & _curr) > 0;
+                                r_v[0xF] = unset as u8;
                             }
-                            r_v[0xF] = unset as u8;
                         }
                     }
                     _ => panic!("Unimplemented opcode 0x{:0x}", op)
@@ -594,12 +622,14 @@ async fn main() {
 
         // Render display
         let _true_scale = (SCALE << !high_res as u32) as f32;
-        clear_background(BLACK);
-        for i in 0 .. HEIGHT {
-            let _row = display[i];
-            for j in 0 .. WIDTH {
-                if _row & (1 << j) > 0 {
-                    draw_rectangle(_true_scale * (WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, WHITE);
+        clear_background(WHITE);
+        for p in 0..PLANE_COUNT {
+            for i in 0 .. HEIGHT {
+                let _row = planes[p][i];
+                for j in 0 .. WIDTH {
+                    if _row & (1 << j) > 0 {
+                        draw_rectangle(_true_scale * (WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[p]);
+                    }
                 }
             }
         }
