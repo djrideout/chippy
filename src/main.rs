@@ -22,7 +22,7 @@ struct Args {
     input: String,
 
     // The number of instructions to run per frame
-    #[arg(short, long, default_value_t = 16)]
+    #[arg(short, long, default_value_t = 0)]
     clock: u32,
 
     // The platform you are targetting
@@ -110,14 +110,20 @@ const PLANE_COLORS: [Color; 2] = [
 async fn main() {
     // Handle arguments
     let _args = Args::parse();
-    if _args.clock == 0 {
-        panic!("Clock rate must be positive");
-    }
     let _result = load_file(&_args.input).await;
     let _rom = match _result {
         Ok(file) => file,
         Err(error) => panic!("Problem opening the ROM: {error:?}")
     };
+    let mut clock = _args.clock;
+    if clock == 0 {
+        match _args.target {
+            Target::Chip => clock = 11,
+            Target::SuperModern => clock = 30,
+            Target::SuperLegacy => clock = 30,
+            Target::XO => clock = 1000
+        }
+    }
 
     // General purpose registers
     let mut r_v: [u8; 16] = [0; 16]; // 16 general purpose "Vx" registers (x is 0-F)
@@ -182,7 +188,7 @@ async fn main() {
         }
 
         // Remaining instructions to run for this frame
-        let mut remaining = _args.clock;
+        let mut remaining = clock;
 
         while remaining > 0 {
             remaining -= 1;
