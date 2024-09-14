@@ -22,6 +22,8 @@ target/
 
 # CHIP-8 binaries
 *.ch8
+# Except for ones included in the "roms" folder
+!roms/*.ch8
 
 # Added by cargo
 

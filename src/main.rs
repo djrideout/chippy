@@ -1,6 +1,10 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
 
+#[cfg(test)]
+mod test;
+
 mod core;
+mod utils;
 
 use std::time::{Duration, Instant};
 use macroquad::prelude::*;
@@ -59,11 +63,7 @@ const PLANE_COLORS: [Color; 2] = [
 async fn main() {
     // Handle arguments
     let _args = Args::parse();
-    let _result = load_file(&_args.input).await;
-    let _rom = match _result {
-        Ok(file) => file,
-        Err(error) => panic!("Problem opening the ROM: {error:?}")
-    };
+    let _rom = utils::load_rom(&_args.input).await;
     let mut clock = _args.clock;
     if clock == 0 {
         match _args.target {
