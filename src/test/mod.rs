@@ -163,3 +163,47 @@ fn test_4_flags_xo() {
     assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::FLAGS_PLANE));
     assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
+
+#[test]
+fn test_4_quirks_chip() {
+    let mut chip8 = core::build_chip8(core::Target::Chip, 16, data::QUIRKS.to_vec());
+    chip8.mem[0x1FF] = 1; // Set correct mode without keypad input
+    for _i in 0..data::QUIRKS_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_CHIP_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_4_quirks_super_modern() {
+    let mut chip8 = core::build_chip8(core::Target::SuperModern, 16, data::QUIRKS.to_vec());
+    chip8.mem[0x1FF] = 2; // Set correct mode without keypad input
+    for _i in 0..data::QUIRKS_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_SUPER_MODERN_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_4_quirks_super_legacy() {
+    let mut chip8 = core::build_chip8(core::Target::SuperLegacy, 16, data::QUIRKS.to_vec());
+    chip8.mem[0x1FF] = 4; // Set correct mode without keypad input
+    for _i in 0..data::QUIRKS_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_SUPER_LEGACY_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_4_quirks_xo() {
+    let mut chip8 = core::build_chip8(core::Target::XO, 16, data::QUIRKS.to_vec());
+    chip8.mem[0x1FF] = 3; // Set correct mode without keypad input
+    for _i in 0..data::QUIRKS_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_XO_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}

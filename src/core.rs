@@ -70,7 +70,7 @@ pub struct Chip8 {
     // Stack
     stack: [u16; 16],
     // Memory
-    mem: [u8; 0x10000], // only XO-CHIP officially supports 0x10000, the rest have 0x1000 but just use the full range for simplicity
+    pub mem: [u8; 0x10000], // only XO-CHIP officially supports 0x10000, the rest have 0x1000 but just use the full range for simplicity
     // Halting flag (waiting for input/drawing)
     halting: bool,
     // Previous opcode, for halting purposes
