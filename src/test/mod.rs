@@ -165,7 +165,7 @@ fn test_4_flags_xo() {
 }
 
 #[test]
-fn test_4_quirks_chip() {
+fn test_5_quirks_chip() {
     let mut chip8 = core::build_chip8(core::Target::Chip, 16, data::QUIRKS.to_vec());
     chip8.mem[0x1FF] = 1; // Set correct mode without keypad input
     for _i in 0..data::QUIRKS_FRAME_COUNT {
@@ -176,7 +176,7 @@ fn test_4_quirks_chip() {
 }
 
 #[test]
-fn test_4_quirks_super_modern() {
+fn test_5_quirks_super_modern() {
     let mut chip8 = core::build_chip8(core::Target::SuperModern, 16, data::QUIRKS.to_vec());
     chip8.mem[0x1FF] = 2; // Set correct mode without keypad input
     for _i in 0..data::QUIRKS_FRAME_COUNT {
@@ -187,7 +187,7 @@ fn test_4_quirks_super_modern() {
 }
 
 #[test]
-fn test_4_quirks_super_legacy() {
+fn test_5_quirks_super_legacy() {
     let mut chip8 = core::build_chip8(core::Target::SuperLegacy, 16, data::QUIRKS.to_vec());
     chip8.mem[0x1FF] = 4; // Set correct mode without keypad input
     for _i in 0..data::QUIRKS_FRAME_COUNT {
@@ -198,7 +198,7 @@ fn test_4_quirks_super_legacy() {
 }
 
 #[test]
-fn test_4_quirks_xo() {
+fn test_5_quirks_xo() {
     let mut chip8 = core::build_chip8(core::Target::XO, 16, data::QUIRKS.to_vec());
     chip8.mem[0x1FF] = 3; // Set correct mode without keypad input
     for _i in 0..data::QUIRKS_FRAME_COUNT {
