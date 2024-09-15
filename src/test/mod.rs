@@ -207,3 +207,69 @@ fn test_5_quirks_xo() {
     assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_XO_PLANE));
     assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
+
+#[test]
+fn test_8_scrolling_super_modern_low() {
+    let mut chip8 = core::build_chip8(core::Target::SuperModern, 16, data::SCROLLING.to_vec());
+    chip8.mem[0x1FF] = 1; // Set correct mode without keypad input
+    for _i in 0..data::SCROLLING_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_MODERN_LOW_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_8_scrolling_super_modern_high() {
+    let mut chip8 = core::build_chip8(core::Target::SuperModern, 16, data::SCROLLING.to_vec());
+    chip8.mem[0x1FF] = 3; // Set correct mode without keypad input
+    for _i in 0..data::SCROLLING_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_HIGH_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_8_scrolling_super_legacy_low() {
+    let mut chip8 = core::build_chip8(core::Target::SuperLegacy, 16, data::SCROLLING.to_vec());
+    chip8.mem[0x1FF] = 2; // Set correct mode without keypad input
+    for _i in 0..data::SCROLLING_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_LEGACY_LOW_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_8_scrolling_super_legacy_high() {
+    let mut chip8 = core::build_chip8(core::Target::SuperLegacy, 16, data::SCROLLING.to_vec());
+    chip8.mem[0x1FF] = 3; // Set correct mode without keypad input
+    for _i in 0..data::SCROLLING_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_HIGH_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_8_scrolling_xo_low() {
+    let mut chip8 = core::build_chip8(core::Target::XO, 16, data::SCROLLING.to_vec());
+    chip8.mem[0x1FF] = 4; // Set correct mode without keypad input
+    for _i in 0..data::SCROLLING_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_XO_LOW_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
+
+#[test]
+fn test_8_scrolling_xo_high() {
+    let mut chip8 = core::build_chip8(core::Target::XO, 16, data::SCROLLING.to_vec());
+    chip8.mem[0x1FF] = 5; // Set correct mode without keypad input
+    for _i in 0..data::SCROLLING_FRAME_COUNT {
+        core::run_frame(&mut chip8);
+    }
+    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_XO_HIGH_PLANE));
+    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+}
