@@ -6,7 +6,6 @@ mod test;
 mod core;
 mod utils;
 
-use std::time::{Duration, Instant};
 use macroquad::prelude::*;
 use clap::Parser;
 
@@ -53,7 +52,6 @@ const KEYMAP: [KeyCode; 16] = [
 
 // Constants
 const SCALE: usize = 6;
-const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
 const PLANE_COLORS: [Color; 3] = [
     BLACK, // Plane 0
     GRAY, // Plane 1
@@ -80,9 +78,6 @@ async fn main() {
     let mut chip8 = core::build_chip8(_args.target, clock, _rom);
 
     loop {
-        // Time at the start of this frame
-        let _t0 = Instant::now();
-
         // Handle key presses
         for i in 0 ..= 0xF as usize {
             chip8.prev_keys[i] = chip8.curr_keys[i];
@@ -119,14 +114,5 @@ async fn main() {
         }
 
         next_frame().await;
-
-        // Time at the end of this frame
-        let _t1 = Instant::now();
-
-        // If the frame length is too short, delay the remaining milliseconds to limit the fps
-        let _delta = _t1.duration_since(_t0);
-        if _delta < FRAME_DURATION {
-            std::thread::sleep(FRAME_DURATION - _delta);
-        }
     }
 }
