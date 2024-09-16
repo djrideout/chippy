@@ -54,9 +54,10 @@ const KEYMAP: [KeyCode; 16] = [
 // Constants
 const SCALE: usize = 6;
 const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
-const PLANE_COLORS: [Color; 2] = [
-    BLACK,
-    GRAY
+const PLANE_COLORS: [Color; 3] = [
+    BLACK, // Plane 0
+    GRAY, // Plane 1
+    LIGHTGRAY // Planes 0 and 1
 ];
 
 #[macroquad::main("chippy")]
@@ -99,13 +100,20 @@ async fn main() {
         // Render display
         let _true_scale = (SCALE << !chip8.high_res as u32) as f32;
         clear_background(WHITE);
-        for p in 0 .. core::PLANE_COUNT {
-            for i in 0 .. core::HEIGHT {
-                let _row = chip8.planes[p][i];
-                for j in 0 .. core::WIDTH {
-                    if _row & (1 << j) > 0 {
-                        draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[p]);
-                    }
+
+        for i in 0 .. core::HEIGHT {
+            let _both = chip8.planes[0][i] & chip8.planes[1][i];
+            let _zero = chip8.planes[0][i] & !_both;
+            let _one = chip8.planes[1][i] & !_both;
+            for j in 0 .. core::WIDTH {
+                if _zero & (1 << j) > 0 {
+                    draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[0]);
+                }
+                if _one & (1 << j) > 0 {
+                    draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[1]);
+                }
+                if _both & (1 << j) > 0 {
+                    draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[2]);
                 }
             }
         }

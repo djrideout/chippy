@@ -590,9 +590,10 @@ pub fn run_frame(chip8: &mut Chip8) {
                                     }
                                     row_i %= _y_mod;
                                 }
-                                let mut sprite_row = chip8.mem[(sprite_width >> 3) * i + chip8.r_i] as u128;
+                                let _base_addr = (sprite_width >> 3) * (i + p) + chip8.r_i;
+                                let mut sprite_row = chip8.mem[_base_addr] as u128;
                                 if sprite_width == 16 {
-                                    sprite_row = (sprite_row << 8) | chip8.mem[(sprite_width >> 3) * i + chip8.r_i + 1] as u128;
+                                    sprite_row = (sprite_row << 8) | chip8.mem[_base_addr + 1] as u128;
                                 }
                                 let _curr = chip8.planes[p][row_i];
                                 let _shift = WIDTH - 1 - _x_coord;
