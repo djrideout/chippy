@@ -5,6 +5,7 @@ mod test;
 
 mod core;
 mod utils;
+mod audio;
 
 use macroquad::prelude::*;
 use clap::Parser;
@@ -60,6 +61,9 @@ const PLANE_COLORS: [Color; 3] = [
 
 #[macroquad::main("chippy")]
 async fn main() {
+    let player = audio::AudioPlayer::new(48000);
+    player.start();
+
     // Handle arguments
     let _args = Args::parse();
     let _rom = utils::load_rom(&_args.input).await;
