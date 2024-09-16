@@ -75,7 +75,7 @@ async fn main() {
 
     request_new_screen_size((core::WIDTH * SCALE) as f32, (core::HEIGHT * SCALE) as f32);
 
-    let mut chip8 = core::build_chip8(_args.target, clock, _rom);
+    let mut chip8 = core::Chip8::new(_args.target, clock, _rom);
 
     loop {
         // Handle key presses
@@ -90,7 +90,7 @@ async fn main() {
             }
         }
 
-        core::run_frame(&mut chip8);
+        chip8.run_frame();
 
         // Render display
         let _true_scale = (SCALE << !chip8.high_res as u32) as f32;
