@@ -83,13 +83,13 @@ async fn main() {
     let arc_parent = Arc::new(Mutex::new(chip8));
     let arc_child = arc_parent.clone();
     
-    let fugg = move |i: usize, len: usize| {
+    let get_sample = move |i: usize, len: usize| {
         // Lock the mutex while generating samples in the audio thread
         let mut chip8 = arc_child.lock().unwrap();
         chip8.run_inst();
         return f32::sin(i as f32 * 2.0 * 3.14159 / len as f32);
     };
-    let player = audio::AudioPlayer::new(48000, fugg);
+    let player = audio::AudioPlayer::new(48000, get_sample);
     player.start();
 
     loop {
