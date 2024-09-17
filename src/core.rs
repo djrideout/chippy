@@ -58,6 +58,7 @@ pub const PLANE_COUNT: usize = 2;
 pub struct Chip8 {
     target: Target,
     clock: u32,
+    remaining: u32,
     // General purpose registers
     r_v: [u8; 16], // 16 general purpose "Vx" registers (x is 0-F)
     // Indexing registers
@@ -91,6 +92,7 @@ impl Chip8 {
         let mut chip8 = Chip8 {
             target,
             clock,
+            remaining: clock,
             r_v: [0; 16],
             r_i: 0,
             r_pc: 0x200,
@@ -127,527 +129,539 @@ impl Chip8 {
         return chip8;
     }
 
-    pub fn run_frame(&mut self) {
-        // Remaining instructions to run for this frame
-        let mut remaining = self.clock;
+    pub fn run_inst(&mut self) -> u32 {
+        self.remaining -= 1;
 
-        while remaining > 0 {
-            remaining -= 1;
+        // Get opcode
+        let mut op = ((self.mem[self.r_pc] as u16) << 8) | self.mem[self.r_pc + 1] as u16;
+        if self.halting {
+            op = self.prev_op;
+        } else {
+            self.r_pc += 2;
+        }
 
-            // Get opcode
-            let mut op = ((self.mem[self.r_pc] as u16) << 8) | self.mem[self.r_pc + 1] as u16;
-            if self.halting {
-                op = self.prev_op;
-            } else {
-                self.r_pc += 2;
-            }
+        // F000 is a 4-byte instruction, so if we need to skip an instruction and PC is on F000,
+        // we should skip 4 bytes instead of 2.
+        let _next_op = ((self.mem[self.r_pc] as u16) << 8) | self.mem[self.r_pc + 1] as u16;
+        let mut skip_count: usize = 2;
+        if _next_op == 0xF000 {
+            skip_count = 4;
+        }
 
-            // F000 is a 4-byte instruction, so if we need to skip an instruction and PC is on F000,
-            // we should skip 4 bytes instead of 2.
-            let _next_op = ((self.mem[self.r_pc] as u16) << 8) | self.mem[self.r_pc + 1] as u16;
-            let mut skip_count: usize = 2;
-            if _next_op == 0xF000 {
-                skip_count = 4;
-            }
+        // Decode opcode
+        let _n = (op & 0xF) as usize;
+        let _x = ((op & 0xF00) >> 8) as usize;
+        let _y = ((op & 0xF0) >> 4) as usize;
+        let _kk = (op & 0xFF) as u8;
+        let _nnn = (op & 0xFFF) as usize;
 
-            // Decode opcode
-            let _n = (op & 0xF) as usize;
-            let _x = ((op & 0xF00) >> 8) as usize;
-            let _y = ((op & 0xF0) >> 4) as usize;
-            let _kk = (op & 0xFF) as u8;
-            let _nnn = (op & 0xFFF) as usize;
-
-            'opcodes: {
-                // 0-nibble param opcodes
-                let mut opcode_matched = true;
-                match op & 0xFFFF {
-                    0x00E0 => {
-                        // 00E0 - CLS
-                        // Clear the display.
+        'opcodes: {
+            // 0-nibble param opcodes
+            let mut opcode_matched = true;
+            match op & 0xFFFF {
+                0x00E0 => {
+                    // 00E0 - CLS
+                    // Clear the display.
+                    for p in 0..PLANE_COUNT {
+                        if (self.enabled_planes >> p) & 1 == 0 {
+                            continue;
+                        }
+                        for i in 0 .. HEIGHT {
+                            self.planes[p][i] = 0;
+                        }
+                    }
+                }
+                0x00EE => {
+                    // 00EE - RET
+                    // Return from a subroutine.
+                    self.r_sp -= 1;
+                    self.r_pc = self.stack[self.r_sp] as usize;
+                }
+                0x00FB if self.target != Target::Chip => {
+                    // 00FB
+                    // Scroll screen content right four pixels, in XO-CHIP only selected bit planes are scrolled
+                    for p in 0..PLANE_COUNT {
+                        if (self.enabled_planes >> p) & 1 == 0 {
+                            continue;
+                        }
+                        for i in 0 .. HEIGHT {
+                            self.planes[p][i] = self.planes[p][i] >> 4;
+                        }
+                    }
+                }
+                0x00FC if self.target != Target::Chip => {
+                    // 00FC
+                    // Scroll screen content left four pixels, in XO-CHIP only selected bit planes are scrolled
+                    for p in 0..PLANE_COUNT {
+                        if (self.enabled_planes >> p) & 1 == 0 {
+                            continue;
+                        }
+                        for i in 0 .. HEIGHT {
+                            self.planes[p][i] = self.planes[p][i] << 4;
+                        }
+                    }
+                }
+                0x00FD if self.target != Target::Chip => {
+                    // 00FD - EXIT
+                    // Exit the interpreter.
+                    // This used to return from main, but I'll just leave it for now.
+                }
+                0x00FE if self.target != Target::Chip => {
+                    // 00FE - LOW
+                    // Disable high-resolution mode.
+                    self.high_res = false;
+                    if self.target != Target::SuperLegacy {
                         for p in 0..PLANE_COUNT {
-                            if (self.enabled_planes >> p) & 1 == 0 {
-                                continue;
-                            }
                             for i in 0 .. HEIGHT {
                                 self.planes[p][i] = 0;
                             }
                         }
                     }
-                    0x00EE => {
-                        // 00EE - RET
-                        // Return from a subroutine.
-                        self.r_sp -= 1;
-                        self.r_pc = self.stack[self.r_sp] as usize;
-                    }
-                    0x00FB if self.target != Target::Chip => {
-                        // 00FB
-                        // Scroll screen content right four pixels, in XO-CHIP only selected bit planes are scrolled
+                }
+                0x00FF if self.target != Target::Chip => {
+                    // 00FF - HIGH
+                    // Enable high-resolution mode.
+                    self.high_res = true;
+                    if self.target != Target::SuperLegacy {
                         for p in 0..PLANE_COUNT {
-                            if (self.enabled_planes >> p) & 1 == 0 {
-                                continue;
-                            }
                             for i in 0 .. HEIGHT {
-                                self.planes[p][i] = self.planes[p][i] >> 4;
+                                self.planes[p][i] = 0;
                             }
                         }
                     }
-                    0x00FC if self.target != Target::Chip => {
-                        // 00FC
-                        // Scroll screen content left four pixels, in XO-CHIP only selected bit planes are scrolled
-                        for p in 0..PLANE_COUNT {
-                            if (self.enabled_planes >> p) & 1 == 0 {
-                                continue;
-                            }
-                            for i in 0 .. HEIGHT {
-                                self.planes[p][i] = self.planes[p][i] << 4;
-                            }
-                        }
-                    }
-                    0x00FD if self.target != Target::Chip => {
-                        // 00FD - EXIT
-                        // Exit the interpreter.
-                        return;
-                    }
-                    0x00FE if self.target != Target::Chip => {
-                        // 00FE - LOW
-                        // Disable high-resolution mode.
-                        self.high_res = false;
-                        if self.target != Target::SuperLegacy {
-                            for p in 0..PLANE_COUNT {
-                                for i in 0 .. HEIGHT {
-                                    self.planes[p][i] = 0;
-                                }
-                            }
-                        }
-                    }
-                    0x00FF if self.target != Target::Chip => {
-                        // 00FF - HIGH
-                        // Enable high-resolution mode.
-                        self.high_res = true;
-                        if self.target != Target::SuperLegacy {
-                            for p in 0..PLANE_COUNT {
-                                for i in 0 .. HEIGHT {
-                                    self.planes[p][i] = 0;
-                                }
-                            }
-                        }
-                    }
-                    0xF000 if self.target == Target::XO => {
-                        // F000
-                        // Assign next 16 bit word to I, and set PC behind it. This is a four byte instruction.
-                        self.r_i = ((self.mem[self.r_pc] as usize) << 8) | self.mem[self.r_pc + 1] as usize;
-                        self.r_pc += 2;
-                    }
-                    0xF002 if self.target == Target::XO => {
-                        // F002
-                        // Load 16 bytes audio pattern pointed to by I into audio pattern buffer
-                        for _i in 0..16 {
-                            self.audio_buffer[_i] = self.mem[self.r_i];
-                        }
-                    }
-                    _ => opcode_matched = false
                 }
-                if opcode_matched {
-                    break 'opcodes;
+                0xF000 if self.target == Target::XO => {
+                    // F000
+                    // Assign next 16 bit word to I, and set PC behind it. This is a four byte instruction.
+                    self.r_i = ((self.mem[self.r_pc] as usize) << 8) | self.mem[self.r_pc + 1] as usize;
+                    self.r_pc += 2;
                 }
-
-                // 1-nibble param opcodes, but the param is the least significant nibble
-                opcode_matched = true;
-                match op & 0xFFF0 {
-                    0x00C0 if self.target != Target::Chip => {
-                        // 00Cn
-                        // Scroll screen content down N pixels, in XO-CHIP only selected bit planes are scrolled
-                        let _count = _n >> (self.target == Target::SuperLegacy && !self.high_res) as u8;
-                        for p in 0..PLANE_COUNT {
-                            if (self.enabled_planes >> p) & 1 == 0 {
-                                continue;
-                            }
-                            for i in (0..HEIGHT - 1).rev() {
-                                if i < _count {
-                                    self.planes[p][i] = 0;
-                                    continue;
-                                }
-                                self.planes[p][i] = self.planes[p][i - _count];
-                            }
-                        }
+                0xF002 if self.target == Target::XO => {
+                    // F002
+                    // Load 16 bytes audio pattern pointed to by I into audio pattern buffer
+                    for _i in 0..16 {
+                        self.audio_buffer[_i] = self.mem[self.r_i];
                     }
-                    0x00D0 if self.target == Target::XO => {
-                        // 00Dn
-                        // Scroll screen content up N hires pixel, in XO-CHIP only selected planes are scrolled
-                        for p in 0..PLANE_COUNT {
-                            if (self.enabled_planes >> p) & 1 == 0 {
-                                continue;
-                            }
-                            for i in 0..HEIGHT - 1 {
-                                if i + _n >= HEIGHT {
-                                    self.planes[p][i] = 0;
-                                    continue;
-                                }
-                                self.planes[p][i] = self.planes[p][i + _n];
-                            }
-                        }
-                    }
-                    _ => opcode_matched = false
                 }
-                if opcode_matched {
-                    break 'opcodes;
-                }
-
-                // 1-nibble param opcodes
-                opcode_matched = true;
-                match op & 0xF0FF {
-                    0xE09E => {
-                        // Ex9E - SKP Vx
-                        // Skip next instruction if key with the value of Vx is pressed.
-                        if self.curr_keys[self.r_v[_x] as usize] {
-                            self.r_pc += skip_count;
-                        }
-                    }
-                    0xE0A1 => {
-                        // ExA1 - SKNP Vx
-                        // Skip next instruction if key with the value of Vx is not pressed.
-                        if !self.curr_keys[self.r_v[_x] as usize] {
-                            self.r_pc += skip_count;
-                        }
-                    }
-                    0xF001 if self.target == Target::XO => {
-                        // Fx01
-                        // Select bit planes to draw on to x (not vX) when drawing with Dxy0/Dxyn
-                        self.enabled_planes = (_x & 0b11) as u8;
-                    }
-                    0xF007 => {
-                        // Fx07 - LD Vx, DT
-                        // Set Vx = delay timer value.
-                        self.r_v[_x] = self.r_delay;
-                    }
-                    0xF00A => {
-                        // Fx0A - LD Vx, K
-                        // Wait for a key press, store the value of the key in Vx.
-                        self.halting = true;
-                        // I guess I'll just grab the first key that releases between previous and current
-                        for i in 0 ..= 0xF as usize {
-                            if self.prev_keys[i] && !self.curr_keys[i] {
-                                self.halting = false;
-                                self.r_v[_x] = i as u8;
-                                break;
-                            }
-                        }
-                    }
-                    0xF015 => {
-                        // Fx15 - LD DT, Vx
-                        // Set delay timer = Vx.
-                        self.r_delay = self.r_v[_x];
-                    }
-                    0xF018 => {
-                        // Fx18 - LD ST, Vx
-                        // Set sound timer = Vx.
-                        self.r_sound = self.r_v[_x];
-                    }
-                    0xF01E => {
-                        // Fx1E - ADD I, Vx
-                        // Set I = I + Vx.
-                        self.r_i += self.r_v[_x] as usize;
-                    }
-                    0xF029 => {
-                        // Fx29 - LD F, Vx
-                        // Set I = location of 5-line sprite for digit Vx.
-                        self.r_i = (self.r_v[_x] & 0xF) as usize * 5;
-                    }
-                    0xF030 if self.target != Target::Chip => {
-                        // Fx30
-                        // Set I = location of 10-line sprite for digit Vx.
-                        self.r_i = SMALL_FONT_SET.len() + (self.r_v[_x] & 0xF) as usize * 10;
-                    }
-                    0xF033 => {
-                        // Fx33 - LD B, Vx
-                        // Store BCD representation of Vx in memory locations I, I+1, and I+2.
-                        self.mem[self.r_i] = self.r_v[_x] / 100 % 10;
-                        self.mem[self.r_i + 1] = self.r_v[_x] / 10 % 10;
-                        self.mem[self.r_i + 2] = self.r_v[_x] % 10;
-                    }
-                    0xF03A if self.target == Target::XO => {
-                        // Fx3A
-                        // Set audio frequency for a audio pattern playback rate of 4000*2^((vX-64)/48)Hz
-                        self.audio_frequency = 4000.0 * 2.0_f32.powf((self.r_v[_x] as i32 - 64) as f32 / 48 as f32);
-                    }
-                    0xF055 => {
-                        // Fx55 - LD [I], Vx
-                        // Store registers V0 through Vx in memory starting at location I.
-                        for i in 0 ..= _x {
-                            self.mem[self.r_i + i] = self.r_v[i];
-                        }
-                        if self.target == Target::Chip || self.target == Target::XO {
-                            self.r_i += _x + 1;
-                        }
-                    }
-                    0xF065 => {
-                        // Fx65 - LD Vx, [I]
-                        // Read registers V0 through Vx from memory starting at location I.
-                        for i in 0 ..= _x {
-                            self.r_v[i] = self.mem[self.r_i + i];
-                        }
-                        if self.target == Target::Chip || self.target == Target::XO {
-                            self.r_i += _x + 1;
-                        }
-                    }
-                    _ => opcode_matched = false
-                }
-                if opcode_matched {
-                    break 'opcodes;
-                }
-
-                // 2-nibble param opcodes
-                opcode_matched = true;
-                match op & 0xF00F {
-                    0x5000 => {
-                        // 5xy0 - SE Vx, Vy
-                        // Skip next instruction if Vx = Vy.
-                        if self.r_v[_x] == self.r_v[_y] {
-                            self.r_pc += skip_count;
-                        }
-                    }
-                    0x5002 if self.target == Target::XO => {
-                        // 5xy2
-                        // Write registers vX to vY to memory pointed to by I.
-                        for _i in _x ..= _y {
-                            self.mem[self.r_i + _i - _x] = self.r_v[_i];
-                        }
-                    }
-                    0x5003 if self.target == Target::XO => {
-                        // 5xy3
-                        // Load registers vX to vY from memory pointed to by I.
-                        for _i in _x ..= _y {
-                            self.r_v[_i] = self.mem[self.r_i + _i - _x];
-                        }
-                    }
-                    0x8000 => {
-                        // 8xy0 - LD Vx, Vy
-                        // Set Vx = Vy.
-                        self.r_v[_x] = self.r_v[_y];
-                    }
-                    0x8001 => {
-                        // 8xy1 - OR Vx, Vy
-                        // Set Vx = Vx OR Vy.
-                        self.r_v[_x] |= self.r_v[_y];
-                        if self.target == Target::Chip {
-                            self.r_v[0xF] = 0;
-                        }
-                    }
-                    0x8002 => {
-                        // 8xy2 - AND Vx, Vy
-                        // Set Vx = Vx AND Vy.
-                        self.r_v[_x] &= self.r_v[_y];
-                        if self.target == Target::Chip {
-                            self.r_v[0xF] = 0;
-                        }
-                    }
-                    0x8003 => {
-                        // 8xy3 - XOR Vx, Vy
-                        // Set Vx = Vx XOR Vy.
-                        self.r_v[_x] ^= self.r_v[_y];
-                        if self.target == Target::Chip {
-                            self.r_v[0xF] = 0;
-                        }
-                    }
-                    0x8004 => {
-                        // 8xy4 - ADD Vx, Vy
-                        // Set Vx = Vx + Vy, set VF = carry.
-                        let _next_x = self.r_v[_x] as u16 + self.r_v[_y] as u16;
-                        self.r_v[_x] = _next_x as u8;
-                        self.r_v[0xF] = (_next_x > 0xFF) as u8;
-                    }
-                    0x8005 => {
-                        // 8xy5 - SUB Vx, Vy
-                        // Set Vx = Vx - Vy, set VF = NOT borrow.
-                        let _prev_x = self.r_v[_x];
-                        if _prev_x < self.r_v[_y] {
-                            self.r_v[_x] = !(self.r_v[_y] - _prev_x - 1);
-                        } else {
-                            self.r_v[_x] = _prev_x - self.r_v[_y];
-                        }
-                        self.r_v[0xF] = (_prev_x >= self.r_v[_y]) as u8;
-                    }
-                    0x8006 => {
-                        // 8xy6 - SHR Vx {, Vy}
-                        // Set Vx = Vx SHR 1.
-                        let mut prev = self.r_v[_y];
-                        if self.target == Target::SuperLegacy || self.target == Target::SuperModern {
-                            prev = self.r_v[_x];
-                        }
-                        self.r_v[_x] = prev >> 1;
-                        self.r_v[0xF] = prev & 1;
-                    }
-                    0x8007 => {
-                        // 8xy7 - SUBN Vx, Vy
-                        // Set Vx = Vy - Vx, set VF = NOT borrow.
-                        let _prev_x = self.r_v[_x];
-                        if self.r_v[_y] < _prev_x {
-                            self.r_v[_x] = !(_prev_x - self.r_v[_y] - 1);
-                        } else {
-                            self.r_v[_x] = self.r_v[_y] - _prev_x;
-                        }
-                        self.r_v[0xF] = (self.r_v[_y] >= _prev_x) as u8;
-                    }
-                    0x800E => {
-                        // 8xyE - SHL Vx {, Vy}
-                        // Set Vx = Vx SHL 1.
-                        let mut prev = self.r_v[_y];
-                        if self.target == Target::SuperLegacy || self.target == Target::SuperModern {
-                            prev = self.r_v[_x];
-                        }
-                        self.r_v[_x] = prev << 1;
-                        self.r_v[0xF] = (prev & 0x80) >> 7;
-                    }
-                    _ => opcode_matched = false
-                }
-                if opcode_matched {
-                    break 'opcodes;
-                }
-
-                //3-nibble param opcodes
-                match op & 0xF000 {
-                    0x1000 => {
-                        // 1nnn - JP addr
-                        // Jump to location nnn.
-                        self.r_pc = _nnn;
-                    }
-                    0x2000 => {
-                        // 2nnn - CALL addr
-                        // Call subroutine at nnn.
-                        self.stack[self.r_sp] = self.r_pc as u16;
-                        self.r_sp += 1;
-                        self.r_pc = _nnn;
-                    }
-                    0x3000 => {
-                        // 3xkk - SE Vx, byte
-                        // Skip next instruction if Vx = kk.
-                        if self.r_v[_x] == _kk {
-                            self.r_pc += skip_count;
-                        }
-                    }
-                    0x4000 => {
-                        // 4xkk - SNE Vx, byte
-                        // Skip next instruction if Vx != kk.
-                        if self.r_v[_x] != _kk {
-                            self.r_pc += skip_count;
-                        }
-                    }
-                    0x6000 => {
-                        // 6xkk - LD Vx, byte
-                        // Set Vx = kk.
-                        self.r_v[_x] = _kk;
-                    }
-                    0x7000 => {
-                        // 7xkk - ADD Vx, byte
-                        // Set Vx = Vx + kk.
-                        let _next = self.r_v[_x] as u16 + _kk as u16;
-                        self.r_v[_x] = _next as u8;
-                    }
-                    0x9000 => {
-                        // 9xy0 - SNE Vx, Vy
-                        // Skip next instruction if Vx != Vy.
-                        if self.r_v[_x] != self.r_v[_y] {
-                            self.r_pc += skip_count;
-                        }
-                    }
-                    0xA000 => {
-                        // Annn - LD I, addr
-                        // Set I = nnn.
-                        self.r_i = _nnn;
-                    }
-                    0xB000 => {
-                        // Bnnn - JP V0, addr / Bxnn - JP Vx, addr
-                        // Jump to location nnn + V0, or xnn + Vx on super.
-                        let mut loc = self.r_v[0] as usize;
-                        if self.target == Target::SuperLegacy || self.target == Target::SuperModern {
-                            let _i = (_nnn & 0xF00) >> 8;
-                            loc = self.r_v[_i] as usize;
-                        }
-                        self.r_pc = _nnn + loc;
-                    }
-                    0xC000 => {
-                        // Cxkk - RND Vx, byte
-                        // Set Vx = random byte AND kk.
-                        self.r_v[_x] = thread_rng().gen::<u8>() & _kk;
-                    }
-                    0xD000 => {
-                        // Dxyn - DRW Vx, Vy, nibble / Dxy0 - DRW Vx, Vy, 0
-                        // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-                        // Sprites are 8 pixels (8 bits/1 byte) wide and from 1 to 15 pixels in height,
-                        // So each byte is one row of the sprite.
-                        // Draws a 16x16 sprite if n=0 and platform is not CHIP-8. (8x16 on super legacy in low-res mode)
-                        self.halting = true;
-                        if remaining == 0
-                            || self.target == Target::SuperModern
-                            || self.target == Target::SuperLegacy && self.high_res
-                            || self.target == Target::XO {
-                            self.halting = false;
-                            let mut plane_offset = -1;
-                            for p in 0..PLANE_COUNT {
-                                if (self.enabled_planes >> p) & 1 == 0 {
-                                    continue;
-                                }
-                                plane_offset += 1;
-                                let _x_mod = WIDTH >> !self.high_res as u8;
-                                let _y_mod = HEIGHT >> !self.high_res as u8;
-                                let _x_coord = self.r_v[_x] as usize % _x_mod;
-                                let _y_coord = self.r_v[_y] as usize % _y_mod;
-                                let mut sprite_height = (op & 0xF) as usize;
-                                let mut sprite_width = 8 as usize;
-                                if self.target != Target::Chip && sprite_height == 0 {
-                                    sprite_height = 16;
-                                    if self.target != Target::SuperLegacy || self.high_res {
-                                        sprite_width = 16;
-                                    }
-                                }
-                                let mut unset = false;
-                                for i in 0 .. sprite_height {
-                                    let mut row_i = _y_coord + i;
-                                    if row_i >= _y_mod {
-                                        if self.target != Target::XO {
-                                            continue;
-                                        }
-                                        row_i %= _y_mod;
-                                    }
-                                    // plane_offset will be non-negative at this point, so casting to usize is fine
-                                    let _base_addr = (sprite_width >> 3) * (i + plane_offset as usize * sprite_height) + self.r_i;
-                                    let mut sprite_row = self.mem[_base_addr] as u128;
-                                    if sprite_width == 16 {
-                                        sprite_row = (sprite_row << 8) | self.mem[_base_addr + 1] as u128;
-                                    }
-                                    let _curr = self.planes[p][row_i];
-                                    let _shift = WIDTH - 1 - _x_coord;
-                                    if _shift < sprite_width - 1 {
-                                        self.planes[p][row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
-                                    } else {
-                                        self.planes[p][row_i] ^= sprite_row << (_shift - (sprite_width - 1));
-                                    }
-                                    if self.target == Target::XO && _x_coord > _x_mod - sprite_width {
-                                        self.planes[p][row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
-                                    }
-                                    if !self.high_res {
-                                        self.planes[p][row_i] &= (!0u64 as u128) << 64;
-                                    }
-                                    unset = unset || (!self.planes[p][row_i] & _curr) > 0;
-                                }
-                                self.r_v[0xF] = unset as u8;
-                            }
-                        }
-                    }
-                    _ => panic!("Unimplemented opcode 0x{:0x}", op)
-                }
+                _ => opcode_matched = false
+            }
+            if opcode_matched {
+                break 'opcodes;
             }
 
-            self.prev_op = op;
+            // 1-nibble param opcodes, but the param is the least significant nibble
+            opcode_matched = true;
+            match op & 0xFFF0 {
+                0x00C0 if self.target != Target::Chip => {
+                    // 00Cn
+                    // Scroll screen content down N pixels, in XO-CHIP only selected bit planes are scrolled
+                    let _count = _n >> (self.target == Target::SuperLegacy && !self.high_res) as u8;
+                    for p in 0..PLANE_COUNT {
+                        if (self.enabled_planes >> p) & 1 == 0 {
+                            continue;
+                        }
+                        for i in (0..HEIGHT - 1).rev() {
+                            if i < _count {
+                                self.planes[p][i] = 0;
+                                continue;
+                            }
+                            self.planes[p][i] = self.planes[p][i - _count];
+                        }
+                    }
+                }
+                0x00D0 if self.target == Target::XO => {
+                    // 00Dn
+                    // Scroll screen content up N hires pixel, in XO-CHIP only selected planes are scrolled
+                    for p in 0..PLANE_COUNT {
+                        if (self.enabled_planes >> p) & 1 == 0 {
+                            continue;
+                        }
+                        for i in 0..HEIGHT - 1 {
+                            if i + _n >= HEIGHT {
+                                self.planes[p][i] = 0;
+                                continue;
+                            }
+                            self.planes[p][i] = self.planes[p][i + _n];
+                        }
+                    }
+                }
+                _ => opcode_matched = false
+            }
+            if opcode_matched {
+                break 'opcodes;
+            }
+
+            // 1-nibble param opcodes
+            opcode_matched = true;
+            match op & 0xF0FF {
+                0xE09E => {
+                    // Ex9E - SKP Vx
+                    // Skip next instruction if key with the value of Vx is pressed.
+                    if self.curr_keys[self.r_v[_x] as usize] {
+                        self.r_pc += skip_count;
+                    }
+                }
+                0xE0A1 => {
+                    // ExA1 - SKNP Vx
+                    // Skip next instruction if key with the value of Vx is not pressed.
+                    if !self.curr_keys[self.r_v[_x] as usize] {
+                        self.r_pc += skip_count;
+                    }
+                }
+                0xF001 if self.target == Target::XO => {
+                    // Fx01
+                    // Select bit planes to draw on to x (not vX) when drawing with Dxy0/Dxyn
+                    self.enabled_planes = (_x & 0b11) as u8;
+                }
+                0xF007 => {
+                    // Fx07 - LD Vx, DT
+                    // Set Vx = delay timer value.
+                    self.r_v[_x] = self.r_delay;
+                }
+                0xF00A => {
+                    // Fx0A - LD Vx, K
+                    // Wait for a key press, store the value of the key in Vx.
+                    self.halting = true;
+                    // I guess I'll just grab the first key that releases between previous and current
+                    for i in 0 ..= 0xF as usize {
+                        if self.prev_keys[i] && !self.curr_keys[i] {
+                            self.halting = false;
+                            self.r_v[_x] = i as u8;
+                            break;
+                        }
+                    }
+                }
+                0xF015 => {
+                    // Fx15 - LD DT, Vx
+                    // Set delay timer = Vx.
+                    self.r_delay = self.r_v[_x];
+                }
+                0xF018 => {
+                    // Fx18 - LD ST, Vx
+                    // Set sound timer = Vx.
+                    self.r_sound = self.r_v[_x];
+                }
+                0xF01E => {
+                    // Fx1E - ADD I, Vx
+                    // Set I = I + Vx.
+                    self.r_i += self.r_v[_x] as usize;
+                }
+                0xF029 => {
+                    // Fx29 - LD F, Vx
+                    // Set I = location of 5-line sprite for digit Vx.
+                    self.r_i = (self.r_v[_x] & 0xF) as usize * 5;
+                }
+                0xF030 if self.target != Target::Chip => {
+                    // Fx30
+                    // Set I = location of 10-line sprite for digit Vx.
+                    self.r_i = SMALL_FONT_SET.len() + (self.r_v[_x] & 0xF) as usize * 10;
+                }
+                0xF033 => {
+                    // Fx33 - LD B, Vx
+                    // Store BCD representation of Vx in memory locations I, I+1, and I+2.
+                    self.mem[self.r_i] = self.r_v[_x] / 100 % 10;
+                    self.mem[self.r_i + 1] = self.r_v[_x] / 10 % 10;
+                    self.mem[self.r_i + 2] = self.r_v[_x] % 10;
+                }
+                0xF03A if self.target == Target::XO => {
+                    // Fx3A
+                    // Set audio frequency for a audio pattern playback rate of 4000*2^((vX-64)/48)Hz
+                    self.audio_frequency = 4000.0 * 2.0_f32.powf((self.r_v[_x] as i32 - 64) as f32 / 48 as f32);
+                }
+                0xF055 => {
+                    // Fx55 - LD [I], Vx
+                    // Store registers V0 through Vx in memory starting at location I.
+                    for i in 0 ..= _x {
+                        self.mem[self.r_i + i] = self.r_v[i];
+                    }
+                    if self.target == Target::Chip || self.target == Target::XO {
+                        self.r_i += _x + 1;
+                    }
+                }
+                0xF065 => {
+                    // Fx65 - LD Vx, [I]
+                    // Read registers V0 through Vx from memory starting at location I.
+                    for i in 0 ..= _x {
+                        self.r_v[i] = self.mem[self.r_i + i];
+                    }
+                    if self.target == Target::Chip || self.target == Target::XO {
+                        self.r_i += _x + 1;
+                    }
+                }
+                _ => opcode_matched = false
+            }
+            if opcode_matched {
+                break 'opcodes;
+            }
+
+            // 2-nibble param opcodes
+            opcode_matched = true;
+            match op & 0xF00F {
+                0x5000 => {
+                    // 5xy0 - SE Vx, Vy
+                    // Skip next instruction if Vx = Vy.
+                    if self.r_v[_x] == self.r_v[_y] {
+                        self.r_pc += skip_count;
+                    }
+                }
+                0x5002 if self.target == Target::XO => {
+                    // 5xy2
+                    // Write registers vX to vY to memory pointed to by I.
+                    for _i in _x ..= _y {
+                        self.mem[self.r_i + _i - _x] = self.r_v[_i];
+                    }
+                }
+                0x5003 if self.target == Target::XO => {
+                    // 5xy3
+                    // Load registers vX to vY from memory pointed to by I.
+                    for _i in _x ..= _y {
+                        self.r_v[_i] = self.mem[self.r_i + _i - _x];
+                    }
+                }
+                0x8000 => {
+                    // 8xy0 - LD Vx, Vy
+                    // Set Vx = Vy.
+                    self.r_v[_x] = self.r_v[_y];
+                }
+                0x8001 => {
+                    // 8xy1 - OR Vx, Vy
+                    // Set Vx = Vx OR Vy.
+                    self.r_v[_x] |= self.r_v[_y];
+                    if self.target == Target::Chip {
+                        self.r_v[0xF] = 0;
+                    }
+                }
+                0x8002 => {
+                    // 8xy2 - AND Vx, Vy
+                    // Set Vx = Vx AND Vy.
+                    self.r_v[_x] &= self.r_v[_y];
+                    if self.target == Target::Chip {
+                        self.r_v[0xF] = 0;
+                    }
+                }
+                0x8003 => {
+                    // 8xy3 - XOR Vx, Vy
+                    // Set Vx = Vx XOR Vy.
+                    self.r_v[_x] ^= self.r_v[_y];
+                    if self.target == Target::Chip {
+                        self.r_v[0xF] = 0;
+                    }
+                }
+                0x8004 => {
+                    // 8xy4 - ADD Vx, Vy
+                    // Set Vx = Vx + Vy, set VF = carry.
+                    let _next_x = self.r_v[_x] as u16 + self.r_v[_y] as u16;
+                    self.r_v[_x] = _next_x as u8;
+                    self.r_v[0xF] = (_next_x > 0xFF) as u8;
+                }
+                0x8005 => {
+                    // 8xy5 - SUB Vx, Vy
+                    // Set Vx = Vx - Vy, set VF = NOT borrow.
+                    let _prev_x = self.r_v[_x];
+                    if _prev_x < self.r_v[_y] {
+                        self.r_v[_x] = !(self.r_v[_y] - _prev_x - 1);
+                    } else {
+                        self.r_v[_x] = _prev_x - self.r_v[_y];
+                    }
+                    self.r_v[0xF] = (_prev_x >= self.r_v[_y]) as u8;
+                }
+                0x8006 => {
+                    // 8xy6 - SHR Vx {, Vy}
+                    // Set Vx = Vx SHR 1.
+                    let mut prev = self.r_v[_y];
+                    if self.target == Target::SuperLegacy || self.target == Target::SuperModern {
+                        prev = self.r_v[_x];
+                    }
+                    self.r_v[_x] = prev >> 1;
+                    self.r_v[0xF] = prev & 1;
+                }
+                0x8007 => {
+                    // 8xy7 - SUBN Vx, Vy
+                    // Set Vx = Vy - Vx, set VF = NOT borrow.
+                    let _prev_x = self.r_v[_x];
+                    if self.r_v[_y] < _prev_x {
+                        self.r_v[_x] = !(_prev_x - self.r_v[_y] - 1);
+                    } else {
+                        self.r_v[_x] = self.r_v[_y] - _prev_x;
+                    }
+                    self.r_v[0xF] = (self.r_v[_y] >= _prev_x) as u8;
+                }
+                0x800E => {
+                    // 8xyE - SHL Vx {, Vy}
+                    // Set Vx = Vx SHL 1.
+                    let mut prev = self.r_v[_y];
+                    if self.target == Target::SuperLegacy || self.target == Target::SuperModern {
+                        prev = self.r_v[_x];
+                    }
+                    self.r_v[_x] = prev << 1;
+                    self.r_v[0xF] = (prev & 0x80) >> 7;
+                }
+                _ => opcode_matched = false
+            }
+            if opcode_matched {
+                break 'opcodes;
+            }
+
+            //3-nibble param opcodes
+            match op & 0xF000 {
+                0x1000 => {
+                    // 1nnn - JP addr
+                    // Jump to location nnn.
+                    self.r_pc = _nnn;
+                }
+                0x2000 => {
+                    // 2nnn - CALL addr
+                    // Call subroutine at nnn.
+                    self.stack[self.r_sp] = self.r_pc as u16;
+                    self.r_sp += 1;
+                    self.r_pc = _nnn;
+                }
+                0x3000 => {
+                    // 3xkk - SE Vx, byte
+                    // Skip next instruction if Vx = kk.
+                    if self.r_v[_x] == _kk {
+                        self.r_pc += skip_count;
+                    }
+                }
+                0x4000 => {
+                    // 4xkk - SNE Vx, byte
+                    // Skip next instruction if Vx != kk.
+                    if self.r_v[_x] != _kk {
+                        self.r_pc += skip_count;
+                    }
+                }
+                0x6000 => {
+                    // 6xkk - LD Vx, byte
+                    // Set Vx = kk.
+                    self.r_v[_x] = _kk;
+                }
+                0x7000 => {
+                    // 7xkk - ADD Vx, byte
+                    // Set Vx = Vx + kk.
+                    let _next = self.r_v[_x] as u16 + _kk as u16;
+                    self.r_v[_x] = _next as u8;
+                }
+                0x9000 => {
+                    // 9xy0 - SNE Vx, Vy
+                    // Skip next instruction if Vx != Vy.
+                    if self.r_v[_x] != self.r_v[_y] {
+                        self.r_pc += skip_count;
+                    }
+                }
+                0xA000 => {
+                    // Annn - LD I, addr
+                    // Set I = nnn.
+                    self.r_i = _nnn;
+                }
+                0xB000 => {
+                    // Bnnn - JP V0, addr / Bxnn - JP Vx, addr
+                    // Jump to location nnn + V0, or xnn + Vx on super.
+                    let mut loc = self.r_v[0] as usize;
+                    if self.target == Target::SuperLegacy || self.target == Target::SuperModern {
+                        let _i = (_nnn & 0xF00) >> 8;
+                        loc = self.r_v[_i] as usize;
+                    }
+                    self.r_pc = _nnn + loc;
+                }
+                0xC000 => {
+                    // Cxkk - RND Vx, byte
+                    // Set Vx = random byte AND kk.
+                    self.r_v[_x] = thread_rng().gen::<u8>() & _kk;
+                }
+                0xD000 => {
+                    // Dxyn - DRW Vx, Vy, nibble / Dxy0 - DRW Vx, Vy, 0
+                    // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+                    // Sprites are 8 pixels (8 bits/1 byte) wide and from 1 to 15 pixels in height,
+                    // So each byte is one row of the sprite.
+                    // Draws a 16x16 sprite if n=0 and platform is not CHIP-8. (8x16 on super legacy in low-res mode)
+                    self.halting = true;
+                    if self.remaining == 0
+                        || self.target == Target::SuperModern
+                        || self.target == Target::SuperLegacy && self.high_res
+                        || self.target == Target::XO {
+                        self.halting = false;
+                        let mut plane_offset = -1;
+                        for p in 0..PLANE_COUNT {
+                            if (self.enabled_planes >> p) & 1 == 0 {
+                                continue;
+                            }
+                            plane_offset += 1;
+                            let _x_mod = WIDTH >> !self.high_res as u8;
+                            let _y_mod = HEIGHT >> !self.high_res as u8;
+                            let _x_coord = self.r_v[_x] as usize % _x_mod;
+                            let _y_coord = self.r_v[_y] as usize % _y_mod;
+                            let mut sprite_height = (op & 0xF) as usize;
+                            let mut sprite_width = 8 as usize;
+                            if self.target != Target::Chip && sprite_height == 0 {
+                                sprite_height = 16;
+                                if self.target != Target::SuperLegacy || self.high_res {
+                                    sprite_width = 16;
+                                }
+                            }
+                            let mut unset = false;
+                            for i in 0 .. sprite_height {
+                                let mut row_i = _y_coord + i;
+                                if row_i >= _y_mod {
+                                    if self.target != Target::XO {
+                                        continue;
+                                    }
+                                    row_i %= _y_mod;
+                                }
+                                // plane_offset will be non-negative at this point, so casting to usize is fine
+                                let _base_addr = (sprite_width >> 3) * (i + plane_offset as usize * sprite_height) + self.r_i;
+                                let mut sprite_row = self.mem[_base_addr] as u128;
+                                if sprite_width == 16 {
+                                    sprite_row = (sprite_row << 8) | self.mem[_base_addr + 1] as u128;
+                                }
+                                let _curr = self.planes[p][row_i];
+                                let _shift = WIDTH - 1 - _x_coord;
+                                if _shift < sprite_width - 1 {
+                                    self.planes[p][row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
+                                } else {
+                                    self.planes[p][row_i] ^= sprite_row << (_shift - (sprite_width - 1));
+                                }
+                                if self.target == Target::XO && _x_coord > _x_mod - sprite_width {
+                                    self.planes[p][row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
+                                }
+                                if !self.high_res {
+                                    self.planes[p][row_i] &= (!0u64 as u128) << 64;
+                                }
+                                unset = unset || (!self.planes[p][row_i] & _curr) > 0;
+                            }
+                            self.r_v[0xF] = unset as u8;
+                        }
+                    }
+                }
+                _ => panic!("Unimplemented opcode 0x{:0x}", op)
+            }
         }
 
-        // Decrement timers.
-        // They decrement at 60hz, so because fps is around 60, just decrement once per frame.
-        if self.r_delay > 0 {
-            self.r_delay -= 1;
+        self.prev_op = op;
+
+        if self.remaining == 0 {
+            self.remaining = self.clock;
+
+            // Decrement timers.
+            // They decrement at 60hz, so because fps is around 60, just decrement once per frame.
+            if self.r_delay > 0 {
+                self.r_delay -= 1;
+            }
+            if self.r_sound > 0 {
+                self.r_sound -= 1;
+            }
+
+            return 0;
         }
-        if self.r_sound > 0 {
-            self.r_sound -= 1;
+
+        return self.remaining;
+    }
+
+    pub fn run_frame(&mut self) {
+        loop {
+            let remaining = self.run_inst();
+            if remaining == 0 {
+                break;
+            }
         }
     }
 }
