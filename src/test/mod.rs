@@ -10,8 +10,8 @@ fn test_1_chip8_logo_chip() {
     for _i in 0..data::LOGO_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::LOGO_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::LOGO_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -20,8 +20,8 @@ fn test_1_chip8_logo_super_modern() {
     for _i in 0..data::LOGO_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::LOGO_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::LOGO_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -30,8 +30,8 @@ fn test_1_chip8_logo_super_legacy() {
     for _i in 0..data::LOGO_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::LOGO_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::LOGO_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -40,8 +40,8 @@ fn test_1_chip8_logo_xo() {
     for _i in 0..data::LOGO_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::LOGO_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::LOGO_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -50,8 +50,8 @@ fn test_2_ibm_logo_chip() {
     for _i in 0..data::IBM_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::IBM_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::IBM_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -60,8 +60,8 @@ fn test_2_ibm_logo_super_modern() {
     for _i in 0..data::IBM_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::IBM_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::IBM_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -70,8 +70,8 @@ fn test_2_ibm_logo_super_legacy() {
     for _i in 0..data::IBM_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::IBM_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::IBM_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -80,8 +80,8 @@ fn test_2_ibm_logo_xo() {
     for _i in 0..data::IBM_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::IBM_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::IBM_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -90,8 +90,8 @@ fn test_3_corax_chip() {
     for _i in 0..data::CORAX_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::CORAX_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::CORAX_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -100,8 +100,8 @@ fn test_3_corax_super_modern() {
     for _i in 0..data::CORAX_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::CORAX_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::CORAX_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -110,8 +110,8 @@ fn test_3_corax_super_legacy() {
     for _i in 0..data::CORAX_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::CORAX_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::CORAX_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -120,8 +120,8 @@ fn test_3_corax_xo() {
     for _i in 0..data::CORAX_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::CORAX_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::CORAX_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -130,8 +130,8 @@ fn test_4_flags_chip() {
     for _i in 0..data::FLAGS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::FLAGS_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::FLAGS_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -140,8 +140,8 @@ fn test_4_flags_super_modern() {
     for _i in 0..data::FLAGS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::FLAGS_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::FLAGS_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -150,8 +150,8 @@ fn test_4_flags_super_legacy() {
     for _i in 0..data::FLAGS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::FLAGS_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::FLAGS_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -160,8 +160,8 @@ fn test_4_flags_xo() {
     for _i in 0..data::FLAGS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::FLAGS_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::FLAGS_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -171,8 +171,8 @@ fn test_5_quirks_chip() {
     for _i in 0..data::QUIRKS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_CHIP_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::QUIRKS_CHIP_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -182,8 +182,8 @@ fn test_5_quirks_super_modern() {
     for _i in 0..data::QUIRKS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_SUPER_MODERN_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::QUIRKS_SUPER_MODERN_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -193,8 +193,8 @@ fn test_5_quirks_super_legacy() {
     for _i in 0..data::QUIRKS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_SUPER_LEGACY_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::QUIRKS_SUPER_LEGACY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -204,8 +204,8 @@ fn test_5_quirks_xo() {
     for _i in 0..data::QUIRKS_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::QUIRKS_XO_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::QUIRKS_XO_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -215,8 +215,8 @@ fn test_8_scrolling_super_modern_low() {
     for _i in 0..data::SCROLLING_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_MODERN_LOW_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::SCROLLING_SUPER_MODERN_LOW_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -226,8 +226,8 @@ fn test_8_scrolling_super_modern_high() {
     for _i in 0..data::SCROLLING_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_HIGH_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::SCROLLING_SUPER_HIGH_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -237,8 +237,8 @@ fn test_8_scrolling_super_legacy_low() {
     for _i in 0..data::SCROLLING_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_LEGACY_LOW_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::SCROLLING_SUPER_LEGACY_LOW_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -248,8 +248,8 @@ fn test_8_scrolling_super_legacy_high() {
     for _i in 0..data::SCROLLING_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_SUPER_HIGH_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::SCROLLING_SUPER_HIGH_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -259,8 +259,8 @@ fn test_8_scrolling_xo_low() {
     for _i in 0..data::SCROLLING_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_XO_LOW_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::SCROLLING_XO_LOW_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }
 
 #[test]
@@ -270,6 +270,6 @@ fn test_8_scrolling_xo_high() {
     for _i in 0..data::SCROLLING_FRAME_COUNT {
         chip8.run_frame();
     }
-    assert_eq!(pretty_plane(&chip8.planes[0]), pretty_plane(&data::SCROLLING_XO_HIGH_PLANE));
-    assert_eq!(pretty_plane(&chip8.planes[1]), pretty_plane(&data::EMPTY_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[0]), pretty_plane(&data::SCROLLING_XO_HIGH_PLANE));
+    assert_eq!(pretty_plane(&chip8.buffer_planes[1]), pretty_plane(&data::EMPTY_PLANE));
 }

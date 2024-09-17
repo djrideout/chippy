@@ -86,7 +86,9 @@ async fn main() {
     let get_sample = move |i: usize, len: usize| {
         // Lock the mutex while generating samples in the audio thread
         let mut chip8 = arc_child.lock().unwrap();
-        chip8.run_inst();
+        if i % 2 == 0 {
+            chip8.run_inst();
+        }
         return f32::sin(i as f32 * 2.0 * 3.14159 / len as f32);
     };
     let player = audio::AudioPlayer::new(48000, get_sample);
@@ -113,9 +115,9 @@ async fn main() {
         clear_background(WHITE);
 
         for i in 0 .. core::HEIGHT {
-            let _both = chip8.planes[0][i] & chip8.planes[1][i];
-            let _zero = chip8.planes[0][i] & !_both;
-            let _one = chip8.planes[1][i] & !_both;
+            let _both = chip8.buffer_planes[0][i] & chip8.buffer_planes[1][i];
+            let _zero = chip8.buffer_planes[0][i] & !_both;
+            let _one = chip8.buffer_planes[1][i] & !_both;
             for j in 0 .. core::WIDTH {
                 if _zero & (1 << j) > 0 {
                     draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[0]);

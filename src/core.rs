@@ -79,7 +79,8 @@ pub struct Chip8 {
     // Display (128x64, 2 planes)
     enabled_planes: u8, // Flags for which of the 2 planes to draw on. If the bit is set, draw on the plane.
     pub high_res: bool, // For high-res resolution mode
-    pub planes: [[u128; HEIGHT]; PLANE_COUNT],
+    pub active_planes: [[u128; HEIGHT]; PLANE_COUNT],
+    pub buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
     // Key press states
     pub prev_keys: [bool; 16],
     pub curr_keys: [bool; 16],
@@ -105,7 +106,11 @@ impl Chip8 {
             prev_op: 0,
             enabled_planes: 0b01,
             high_res: false,
-            planes: [
+            active_planes: [
+                [0; HEIGHT],
+                [0; HEIGHT]
+            ],
+            buffer_planes: [
                 [0; HEIGHT],
                 [0; HEIGHT]
             ],
@@ -167,7 +172,7 @@ impl Chip8 {
                             continue;
                         }
                         for i in 0 .. HEIGHT {
-                            self.planes[p][i] = 0;
+                            self.active_planes[p][i] = 0;
                         }
                     }
                 }
@@ -185,7 +190,7 @@ impl Chip8 {
                             continue;
                         }
                         for i in 0 .. HEIGHT {
-                            self.planes[p][i] = self.planes[p][i] >> 4;
+                            self.active_planes[p][i] = self.active_planes[p][i] >> 4;
                         }
                     }
                 }
@@ -197,7 +202,7 @@ impl Chip8 {
                             continue;
                         }
                         for i in 0 .. HEIGHT {
-                            self.planes[p][i] = self.planes[p][i] << 4;
+                            self.active_planes[p][i] = self.active_planes[p][i] << 4;
                         }
                     }
                 }
@@ -213,7 +218,7 @@ impl Chip8 {
                     if self.target != Target::SuperLegacy {
                         for p in 0..PLANE_COUNT {
                             for i in 0 .. HEIGHT {
-                                self.planes[p][i] = 0;
+                                self.active_planes[p][i] = 0;
                             }
                         }
                     }
@@ -225,7 +230,7 @@ impl Chip8 {
                     if self.target != Target::SuperLegacy {
                         for p in 0..PLANE_COUNT {
                             for i in 0 .. HEIGHT {
-                                self.planes[p][i] = 0;
+                                self.active_planes[p][i] = 0;
                             }
                         }
                     }
@@ -262,10 +267,10 @@ impl Chip8 {
                         }
                         for i in (0..HEIGHT - 1).rev() {
                             if i < _count {
-                                self.planes[p][i] = 0;
+                                self.active_planes[p][i] = 0;
                                 continue;
                             }
-                            self.planes[p][i] = self.planes[p][i - _count];
+                            self.active_planes[p][i] = self.active_planes[p][i - _count];
                         }
                     }
                 }
@@ -278,10 +283,10 @@ impl Chip8 {
                         }
                         for i in 0..HEIGHT - 1 {
                             if i + _n >= HEIGHT {
-                                self.planes[p][i] = 0;
+                                self.active_planes[p][i] = 0;
                                 continue;
                             }
-                            self.planes[p][i] = self.planes[p][i + _n];
+                            self.active_planes[p][i] = self.active_planes[p][i + _n];
                         }
                     }
                 }
@@ -613,20 +618,20 @@ impl Chip8 {
                                 if sprite_width == 16 {
                                     sprite_row = (sprite_row << 8) | self.mem[_base_addr + 1] as u128;
                                 }
-                                let _curr = self.planes[p][row_i];
+                                let _curr = self.active_planes[p][row_i];
                                 let _shift = WIDTH - 1 - _x_coord;
                                 if _shift < sprite_width - 1 {
-                                    self.planes[p][row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
+                                    self.active_planes[p][row_i] ^= sprite_row >> (sprite_width - 1 - _shift);
                                 } else {
-                                    self.planes[p][row_i] ^= sprite_row << (_shift - (sprite_width - 1));
+                                    self.active_planes[p][row_i] ^= sprite_row << (_shift - (sprite_width - 1));
                                 }
                                 if self.target == Target::XO && _x_coord > _x_mod - sprite_width {
-                                    self.planes[p][row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
+                                    self.active_planes[p][row_i] ^= sprite_row.rotate_right((_x_coord - (_x_mod - sprite_width)) as u32) & (!0u16 as u128) << 112;
                                 }
                                 if !self.high_res {
-                                    self.planes[p][row_i] &= (!0u64 as u128) << 64;
+                                    self.active_planes[p][row_i] &= (!0u64 as u128) << 64;
                                 }
-                                unset = unset || (!self.planes[p][row_i] & _curr) > 0;
+                                unset = unset || (!self.active_planes[p][row_i] & _curr) > 0;
                             }
                             self.r_v[0xF] = unset as u8;
                         }
@@ -639,6 +644,7 @@ impl Chip8 {
         self.prev_op = op;
 
         if self.remaining == 0 {
+            // This frame is over, reset the remaining instruction count
             self.remaining = self.clock;
 
             // Decrement timers.
@@ -648,6 +654,13 @@ impl Chip8 {
             }
             if self.r_sound > 0 {
                 self.r_sound -= 1;
+            }
+
+            // Copy the active planes over to the buffer planes
+            for _p in 0..PLANE_COUNT {
+                for _i in 0..HEIGHT {
+                    self.buffer_planes[_p][_i] = self.active_planes[_p][_i];
+                }
             }
 
             return 0;
