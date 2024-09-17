@@ -7,6 +7,7 @@ mod core;
 mod utils;
 mod audio;
 
+use std::sync::{Arc, Mutex};
 use macroquad::prelude::*;
 use clap::Parser;
 
@@ -61,9 +62,6 @@ const PLANE_COLORS: [Color; 3] = [
 
 #[macroquad::main("chippy")]
 async fn main() {
-    let player = audio::AudioPlayer::new(48000);
-    player.start();
-
     // Handle arguments
     let _args = Args::parse();
     let _rom = utils::load_rom(&_args.input).await;
@@ -79,9 +77,25 @@ async fn main() {
 
     request_new_screen_size((core::WIDTH * SCALE) as f32, (core::HEIGHT * SCALE) as f32);
 
-    let mut chip8 = core::Chip8::new(_args.target, clock, _rom);
+    let chip8 = core::Chip8::new(_args.target, clock, _rom);
+
+    // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
+    let arc_parent = Arc::new(Mutex::new(chip8));
+    let arc_child = arc_parent.clone();
+    
+    let fugg = move |i: usize, len: usize| {
+        // Lock the mutex while generating samples in the audio thread
+        let mut chip8 = arc_child.lock().unwrap();
+        chip8.run_inst();
+        return f32::sin(i as f32 * 2.0 * 3.14159 / len as f32);
+    };
+    let player = audio::AudioPlayer::new(48000, fugg);
+    player.start();
 
     loop {
+        // Lock the mutex while handling inputs/rendering
+        let mut chip8 = arc_parent.lock().unwrap();
+
         // Handle key presses
         for i in 0 ..= 0xF as usize {
             chip8.prev_keys[i] = chip8.curr_keys[i];
@@ -93,8 +107,6 @@ async fn main() {
                 chip8.curr_keys[i] = false;
             }
         }
-
-        chip8.run_frame();
 
         // Render display
         let _true_scale = (SCALE << !chip8.high_res as u32) as f32;
@@ -116,6 +128,9 @@ async fn main() {
                 }
             }
         }
+
+        // Manually unlock the mutex while waiting for the next frame so the audio thread can drive the emulation
+        drop(chip8);
 
         next_frame().await;
     }
