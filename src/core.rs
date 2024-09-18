@@ -375,7 +375,7 @@ impl Chip8 {
                 0xF03A if self.target == Target::XO => {
                     // Fx3A
                     // Set audio frequency for a audio pattern playback rate of 4000*2^((vX-64)/48)Hz
-                    // I "simplified" this to 3*clock/(200^((vX-64)/48)) instructions/rotation at 60fps
+                    // I "simplified" this to 3*clock/(200*2^((vX-64)/48)) instructions/rotation at 60fps
                     self.audio_reset = (3.0 * self.clock as f32 / (200_f32 * 2_f32.powf(((self.r_v[_x] as f32)-64.0)/48.0)) as f32) as u32;
                 }
                 0xF055 => {
