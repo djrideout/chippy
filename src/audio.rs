@@ -7,7 +7,7 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    pub fn new<F: 'static + Send + FnMut(usize, usize) -> f32>(frequency: u32, mut get_sample: F) -> AudioPlayer {
+    pub fn new<F: 'static + Send + Fn(usize) -> f32>(frequency: u32, mut get_sample: F) -> AudioPlayer {
         let host = cpal::default_host();
         let output_device = match host.default_output_device() {
             Some(device) => device,
@@ -22,7 +22,7 @@ impl AudioPlayer {
         let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
             let len = data.len();
             for (i, sample) in data.iter_mut().enumerate() {
-                *sample = get_sample(i, len);
+                *sample = get_sample(i);
             }
         };
         let output_stream = match output_device.build_output_stream(&config, output_data_fn, Self::error, None) {

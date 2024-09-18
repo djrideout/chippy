@@ -79,17 +79,21 @@ async fn main() {
 
     let chip8 = core::Chip8::new(_args.target, clock, _rom);
 
+    let _inst_per_sample = clock / 800; // Assuming 48000Hz audio frequency and 60fps
+
     // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
     let arc_parent = Arc::new(Mutex::new(chip8));
     let arc_child = arc_parent.clone();
     
-    let get_sample = move |i: usize, len: usize| {
+    let get_sample = move |i: usize| {
         // Lock the mutex while generating samples in the audio thread
         let mut chip8 = arc_child.lock().unwrap();
         if i % 2 == 0 {
-            chip8.run_inst();
+            for _i in 0.._inst_per_sample {
+                chip8.run_inst();
+            }
         }
-        return f32::sin(i as f32 * 2.0 * 3.14159 / len as f32);
+        return 0.2 * ((chip8.audio_buffer >> 127) & 1) as f32;
     };
     let player = audio::AudioPlayer::new(48000, get_sample);
     player.start();

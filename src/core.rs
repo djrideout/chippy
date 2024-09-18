@@ -84,8 +84,9 @@ pub struct Chip8 {
     // Key press states
     pub prev_keys: [bool; 16],
     pub curr_keys: [bool; 16],
-    pub audio_buffer: [u8; 16],
-    pub audio_frequency: f32
+    pub audio_buffer: u128,
+    pub audio_reset: u32,
+    pub audio_counter: u32,
 }
 
 impl Chip8 {
@@ -116,8 +117,9 @@ impl Chip8 {
             ],
             prev_keys: [false; 16],
             curr_keys: [false; 16],
-            audio_buffer: [0; 16],
-            audio_frequency: 4000.0
+            audio_buffer: 0,
+            audio_reset: 3 * clock as u32 / 200 as u32,
+            audio_counter: 3 * clock as u32 / 200 as u32,
         };
 
         // Load fonts into memory
@@ -244,9 +246,11 @@ impl Chip8 {
                 0xF002 if self.target == Target::XO => {
                     // F002
                     // Load 16 bytes audio pattern pointed to by I into audio pattern buffer
+                    let mut new_buffer = 0_u128;
                     for _i in 0..16 {
-                        self.audio_buffer[_i] = self.mem[self.r_i];
+                        new_buffer = (new_buffer << 8) | self.mem[self.r_i + _i] as u128;
                     }
+                    self.audio_buffer = new_buffer;
                 }
                 _ => opcode_matched = false
             }
@@ -371,7 +375,8 @@ impl Chip8 {
                 0xF03A if self.target == Target::XO => {
                     // Fx3A
                     // Set audio frequency for a audio pattern playback rate of 4000*2^((vX-64)/48)Hz
-                    self.audio_frequency = 4000.0 * 2.0_f32.powf((self.r_v[_x] as i32 - 64) as f32 / 48 as f32);
+                    // I "simplified" this to 3*clock/(200^((vX-64)/48)) instructions/rotation at 60fps
+                    self.audio_reset = (3.0 * self.clock as f32 / (200_f32 * 2_f32.powf(((self.r_v[_x] as f32)-64.0)/48.0)) as f32) as u32;
                 }
                 0xF055 => {
                     // Fx55 - LD [I], Vx
@@ -642,6 +647,12 @@ impl Chip8 {
         }
 
         self.prev_op = op;
+
+        self.audio_counter -= 1;
+        if self.audio_counter == 0 {
+            self.audio_counter = self.audio_reset;
+            self.audio_buffer = self.audio_buffer.rotate_left(1);
+        }
 
         if self.remaining == 0 {
             // This frame is over, reset the remaining instruction count
