@@ -87,6 +87,7 @@ pub struct Chip8 {
     pub audio_buffer: u128,
     pub audio_reset: u32,
     pub audio_counter: u32,
+    current_rotation: u32,
 }
 
 impl Chip8 {
@@ -120,6 +121,7 @@ impl Chip8 {
             audio_buffer: 0,
             audio_reset: 3 * clock as u32 / 200 as u32,
             audio_counter: 3 * clock as u32 / 200 as u32,
+            current_rotation: 0,
         };
 
         // Load fonts into memory
@@ -250,7 +252,7 @@ impl Chip8 {
                     for _i in 0..16 {
                         new_buffer = (new_buffer << 8) | self.mem[self.r_i + _i] as u128;
                     }
-                    self.audio_buffer = new_buffer;
+                    self.audio_buffer = new_buffer.rotate_left(self.current_rotation);
                 }
                 _ => opcode_matched = false
             }
@@ -652,6 +654,7 @@ impl Chip8 {
         if self.audio_counter == 0 {
             self.audio_counter = self.audio_reset;
             self.audio_buffer = self.audio_buffer.rotate_left(1);
+            self.current_rotation = (self.current_rotation + 1) % 128;
         }
 
         if self.remaining == 0 {
