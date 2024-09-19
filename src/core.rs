@@ -51,6 +51,7 @@ const BIG_FONT_SET: [u8; 160] = [
 ];
 
 // Constants
+const FRAME_RATE: f32 = 60.0;
 pub const WIDTH: usize = 128;
 pub const HEIGHT: usize = 64;
 pub const PLANE_COUNT: usize = 2;
@@ -84,14 +85,16 @@ pub struct Chip8 {
     // Key press states
     pub prev_keys: [bool; 16],
     pub curr_keys: [bool; 16],
-    pub audio_buffer: u128,
-    pub audio_reset: u32,
-    pub audio_counter: u32,
-    current_rotation: u32,
+    seconds_per_output_sample: f32,
+    seconds_per_instruction: f32,
+    audio_time: f32,
+    audio_buffer: u128,
+    audio_frequency: f32,
+    audio_oscillator: f32,
 }
 
 impl Chip8 {
-    pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
+    pub fn new(target: Target, clock: u32, rom: Vec<u8>, output_frequency: u32) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
             clock,
@@ -118,10 +121,12 @@ impl Chip8 {
             ],
             prev_keys: [false; 16],
             curr_keys: [false; 16],
+            seconds_per_output_sample: 1.0 / output_frequency as f32,
+            seconds_per_instruction: 1.0 / (FRAME_RATE * clock as f32),
+            audio_time: 0.0,
             audio_buffer: 0,
-            audio_reset: 3 * clock as u32 / 200 as u32,
-            audio_counter: 3 * clock as u32 / 200 as u32,
-            current_rotation: 0,
+            audio_frequency: 4000.0,
+            audio_oscillator: 0.0,
         };
 
         // Load fonts into memory
@@ -138,7 +143,7 @@ impl Chip8 {
         return chip8;
     }
 
-    pub fn run_inst(&mut self) -> u32 {
+    pub fn run_inst(&mut self) -> bool {
         self.remaining -= 1;
 
         // Get opcode
@@ -252,7 +257,7 @@ impl Chip8 {
                     for _i in 0..16 {
                         new_buffer = (new_buffer << 8) | self.mem[self.r_i + _i] as u128;
                     }
-                    self.audio_buffer = new_buffer.rotate_left(self.current_rotation);
+                    self.audio_buffer = new_buffer;
                 }
                 _ => opcode_matched = false
             }
@@ -377,8 +382,7 @@ impl Chip8 {
                 0xF03A if self.target == Target::XO => {
                     // Fx3A
                     // Set audio frequency for a audio pattern playback rate of 4000*2^((vX-64)/48)Hz
-                    // I "simplified" this to 3*clock/(200*2^((vX-64)/48)) instructions/rotation at 60fps
-                    self.audio_reset = (3.0 * self.clock as f32 / (200_f32 * 2_f32.powf(((self.r_v[_x] as f32)-64.0)/48.0)) as f32) as u32;
+                    self.audio_frequency = 4000.0 * 2_f32.powf((self.r_v[_x] as f32 - 64.0) / 48.0);
                 }
                 0xF055 => {
                     // Fx55 - LD [I], Vx
@@ -650,11 +654,12 @@ impl Chip8 {
 
         self.prev_op = op;
 
-        self.audio_counter -= 1;
-        if self.audio_counter == 0 {
-            self.audio_counter = self.audio_reset;
-            self.audio_buffer = self.audio_buffer.rotate_left(1);
-            self.current_rotation = (self.current_rotation + 1) % 128;
+        let mut sample_ready = false;
+        self.audio_time += self.seconds_per_instruction;
+        if self.audio_time >= self.seconds_per_output_sample {
+            self.audio_time -= self.seconds_per_output_sample;
+            self.audio_oscillator = (self.audio_oscillator + self.seconds_per_output_sample * self.audio_frequency) % 128.0;
+            sample_ready = true;
         }
 
         if self.remaining == 0 {
@@ -676,17 +681,19 @@ impl Chip8 {
                     self.buffer_planes[_p][_i] = self.active_planes[_p][_i];
                 }
             }
-
-            return 0;
         }
 
-        return self.remaining;
+        sample_ready
+    }
+
+    pub fn get_sample(&self) -> f32 {
+        ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
     }
 
     pub fn run_frame(&mut self) {
         loop {
-            let remaining = self.run_inst();
-            if remaining == 0 {
+            self.run_inst();
+            if self.remaining == self.clock {
                 break;
             }
         }
