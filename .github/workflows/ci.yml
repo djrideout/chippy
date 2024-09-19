@@ -1,4 +1,4 @@
-name: Cargo Test
+name: Cargo Build & Test
 
 on:
   push:
@@ -20,4 +20,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - run: cargo build --verbose
       - run: cargo test --verbose
