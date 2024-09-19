@@ -1,8 +1,5 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
 
-#[cfg(test)]
-mod test;
-
 mod core;
 mod utils;
 mod audio;
