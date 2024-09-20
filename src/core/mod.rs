@@ -71,7 +71,7 @@ pub struct Chip8 {
     r_sp: usize, // Stack pointer
     // Other registers
     r_delay: u8, // Delay timer
-    r_sound: u8, // Sound timer
+    r_audio: u8, // Audio timer
     // Stack
     stack: [u16; 16],
     // Memory
@@ -107,7 +107,7 @@ impl Chip8 {
             r_pc: 0x200,
             r_sp: 0,
             r_delay: 0,
-            r_sound: 0,
+            r_audio: 0,
             stack: [0; 16],
             mem: [0; 0x10000],
             halting: false,
@@ -127,7 +127,7 @@ impl Chip8 {
             seconds_per_output_sample: 1.0 / output_frequency as f32,
             seconds_per_instruction: 1.0 / (FRAME_RATE * clock as f32),
             audio_time: 0.0,
-            audio_buffer: 0,
+            audio_buffer: 0x0000FFFF0000FFFF0000FFFF0000FFFF, // Arbitrary pattern for non-XO buzzer
             audio_frequency: 4000.0,
             audio_oscillator: 0.0,
         };
@@ -358,7 +358,7 @@ impl Chip8 {
                 0xF018 => {
                     // Fx18 - LD ST, Vx
                     // Set sound timer = Vx.
-                    self.r_sound = self.r_v[_x];
+                    self.r_audio = self.r_v[_x];
                 }
                 0xF01E => {
                     // Fx1E - ADD I, Vx
@@ -674,8 +674,11 @@ impl Chip8 {
             if self.r_delay > 0 {
                 self.r_delay -= 1;
             }
-            if self.r_sound > 0 {
-                self.r_sound -= 1;
+            if self.r_audio > 0 {
+                self.r_audio -= 1;
+            }
+            if self.r_audio == 0 {
+                self.audio_oscillator = 0.0;
             }
 
             // Copy the active planes over to the buffer planes
@@ -690,6 +693,9 @@ impl Chip8 {
     }
 
     pub fn get_sample(&self) -> f32 {
+        if self.r_audio == 0 {
+            return 0.0;
+        }
         ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
     }
 
