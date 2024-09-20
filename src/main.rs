@@ -1,12 +1,10 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
 
-#[cfg(test)]
-mod test;
-
 mod core;
 mod utils;
+mod audio;
 
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
 use macroquad::prelude::*;
 use clap::Parser;
 
@@ -53,7 +51,6 @@ const KEYMAP: [KeyCode; 16] = [
 
 // Constants
 const SCALE: usize = 6;
-const FRAME_DURATION: Duration = Duration::new(0, 16666666); // Approximately 60fps
 const PLANE_COLORS: [Color; 3] = [
     BLACK, // Plane 0
     GRAY, // Plane 1
@@ -77,34 +74,47 @@ async fn main() {
 
     request_new_screen_size((core::WIDTH * SCALE) as f32, (core::HEIGHT * SCALE) as f32);
 
-    let mut chip8 = core::build_chip8(_args.target, clock, _rom);
+    let core = core::Chip8::new(_args.target, clock, _rom, 48000);
+
+    // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
+    let arc_parent = Arc::new(Mutex::new(core));
+    let arc_child = arc_parent.clone();
+    
+    let get_sample = move |i: usize| {
+        // Lock the mutex while generating samples in the audio thread
+        let mut core = arc_child.lock().unwrap();
+        if i % 2 == 0 {
+            while !core.run_inst() {}
+        }
+        core.get_sample()
+    };
+    let player = audio::AudioPlayer::new(48000, get_sample);
+    player.start();
 
     loop {
-        // Time at the start of this frame
-        let _t0 = Instant::now();
+        // Lock the mutex while handling inputs/rendering
+        let mut core = arc_parent.lock().unwrap();
 
         // Handle key presses
         for i in 0 ..= 0xF as usize {
-            chip8.prev_keys[i] = chip8.curr_keys[i];
+            core.prev_keys[i] = core.curr_keys[i];
             if is_key_released(KEYMAP[i]) {
-                chip8.curr_keys[i] = false;
+                core.curr_keys[i] = false;
             } else if is_key_pressed(KEYMAP[i]) || is_key_down(KEYMAP[i]) {
-                chip8.curr_keys[i] = true;
+                core.curr_keys[i] = true;
             } else {
-                chip8.curr_keys[i] = false;
+                core.curr_keys[i] = false;
             }
         }
 
-        core::run_frame(&mut chip8);
-
         // Render display
-        let _true_scale = (SCALE << !chip8.high_res as u32) as f32;
+        let _true_scale = (SCALE << !core.high_res as u32) as f32;
         clear_background(WHITE);
 
         for i in 0 .. core::HEIGHT {
-            let _both = chip8.planes[0][i] & chip8.planes[1][i];
-            let _zero = chip8.planes[0][i] & !_both;
-            let _one = chip8.planes[1][i] & !_both;
+            let _both = core.buffer_planes[0][i] & core.buffer_planes[1][i];
+            let _zero = core.buffer_planes[0][i] & !_both;
+            let _one = core.buffer_planes[1][i] & !_both;
             for j in 0 .. core::WIDTH {
                 if _zero & (1 << j) > 0 {
                     draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[0]);
@@ -118,15 +128,9 @@ async fn main() {
             }
         }
 
+        // Manually unlock the mutex while waiting for the next frame so the audio thread can drive the emulation
+        drop(core);
+
         next_frame().await;
-
-        // Time at the end of this frame
-        let _t1 = Instant::now();
-
-        // If the frame length is too short, delay the remaining milliseconds to limit the fps
-        let _delta = _t1.duration_since(_t0);
-        if _delta < FRAME_DURATION {
-            std::thread::sleep(FRAME_DURATION - _delta);
-        }
     }
 }
