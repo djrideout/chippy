@@ -6,9 +6,11 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.16", features = ["derive"] }
 cpal = "0.15.3"
-macroquad = "0.4.13"
+pixels = "0.14.0"
 pretty_assertions = "1.4.0"
 rand = "0.8.5"
+winit = { version = "0.29", features = ["rwh_05"] }
+winit_input_helper = "0.15"
 
 [[bin]]
 name = "chippy"
