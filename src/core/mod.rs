@@ -1,5 +1,4 @@
 use clap::ValueEnum;
-use ::rand::prelude::*;
 
 #[cfg(test)]
 mod test;
@@ -585,7 +584,8 @@ impl Chip8 {
                 0xC000 => {
                     // Cxkk - RND Vx, byte
                     // Set Vx = random byte AND kk.
-                    self.r_v[_x] = thread_rng().gen::<u8>() & _kk;
+                    //self.r_v[_x] = thread_rng().gen::<u8>() & _kk;
+                    self.r_v[_x] = 0x69;
                 }
                 0xD000 => {
                     // Dxyn - DRW Vx, Vy, nibble / Dxy0 - DRW Vx, Vy, 0
@@ -699,7 +699,7 @@ impl Chip8 {
         ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
     }
 
-    #[cfg(test)]
+    //#[cfg(test)]
     pub fn run_frame(&mut self) {
         loop {
             self.run_inst();

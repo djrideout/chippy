@@ -4,9 +4,12 @@ mod core;
 mod utils;
 mod audio;
 
+use error_iter::ErrorIter as _;
+use log::error;
 use std::sync::{Arc, Mutex};
 use clap::Parser;
 use pixels::{Pixels, SurfaceTexture};
+use std::rc::Rc;
 use winit::dpi::LogicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::EventLoop;
@@ -56,21 +59,38 @@ const KEYMAP: [KeyCode; 16] = [
 ];
 
 fn main() {
-    // Handle arguments
-    let _args = Args::parse();
-    let _rom = utils::load_rom(&_args.input);
-    let mut clock = _args.clock;
-    if clock == 0 {
-        match _args.target {
-            core::Target::Chip => clock = 11,
-            core::Target::SuperModern => clock = 30,
-            core::Target::SuperLegacy => clock = 30,
-            core::Target::XO => clock = 1000
-        }
+    #[cfg(target_arch = "wasm32")]
+    {
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        console_log::init_with_level(log::Level::Trace).expect("error initializing logger");
+        wasm_bindgen_futures::spawn_local(run());
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        pollster::block_on(run());
+    }
+}
+
+async fn run() {
+    // Handle arguments
+    //let _args = Args::parse();
+    //let _rom = utils::load_rom(&_args.input);
+    let _rom = include_bytes!("../nyancat.ch8").to_vec();
+    let clock = 20000;
+    let target = core::Target::XO;
+    // let mut clock = _args.clock;
+    // if clock == 0 {
+    //     match _args.target {
+    //         core::Target::Chip => clock = 11,
+    //         core::Target::SuperModern => clock = 30,
+    //         core::Target::SuperLegacy => clock = 30,
+    //         core::Target::XO => clock = 1000
+    //     }
+    // }
 
     // Create core
-    let core = core::Chip8::new(_args.target, clock, _rom, 48000);
+    let core = core::Chip8::new(target, clock, _rom, 48000);
+    //let core = core::Chip8::new(_args.target, clock, _rom, 48000);
 
     // Setup audio
     // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
@@ -78,6 +98,7 @@ fn main() {
     let arc_child = arc_parent.clone();
 
     let get_sample = move |i: usize| {
+        //info!("fuck");
         // Lock the mutex while generating samples in the audio thread
         let mut core = arc_child.lock().unwrap();
         if i % 2 == 0 {
@@ -98,13 +119,61 @@ fn main() {
             .with_inner_size(size)
             .with_min_inner_size(size)
             .build(&event_loop)
-            .unwrap()
+            .expect("WindowBuilder error")
     };
+
+    let window = Rc::new(window);
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        use winit::platform::web::WindowExtWebSys;
+
+        // Retrieve current width and height dimensions of browser client window
+        let get_window_size = || {
+            let client_window = web_sys::window().unwrap();
+            LogicalSize::new(
+                client_window.inner_width().unwrap().as_f64().unwrap(),
+                client_window.inner_height().unwrap().as_f64().unwrap(),
+            )
+        };
+
+        let window = Rc::clone(&window);
+
+        // Initialize winit window with current dimensions of browser client
+        window.set_min_inner_size(Some(get_window_size()));
+
+        let client_window = web_sys::window().unwrap();
+
+        // Attach winit canvas to body element
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&window.canvas().unwrap())
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+
+        // Listen for resize event on browser client. Adjust winit window dimensions
+        // on event trigger
+        let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |_e: web_sys::Event| {
+            let size = get_window_size();
+            window.set_min_inner_size(Some(size))
+        }) as Box<dyn FnMut(_)>);
+        client_window
+            .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+            .unwrap();
+        closure.forget();
+    }
+
     let mut pixels = {
         let window_size = window.inner_size();
-        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(core::WIDTH as u32, core::HEIGHT as u32, surface_texture).unwrap()
+        //let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
+        let surface_texture = SurfaceTexture::new(core::WIDTH as u32, core::HEIGHT as u32, &window);
+        Pixels::new_async(core::WIDTH as u32, core::HEIGHT as u32, surface_texture).await.expect("Pixels error")
     };
+
     let res = event_loop.run(|event, elwt| {
         // Draw the current frame
         if let Event::WindowEvent {
@@ -116,6 +185,7 @@ fn main() {
             draw_core(&mut core, pixels.frame_mut());
             drop(core);
             if let Err(err) = pixels.render() {
+                log_error("pixels.render", err);
                 elwt.exit();
                 return;
             }
@@ -130,12 +200,13 @@ fn main() {
             }
 
             // Resize the window
-            if let Some(size) = input.window_resized() {
-                if let Err(err) = pixels.resize_surface(size.width, size.height) {
-                    elwt.exit();
-                    return;
-                }
-            }
+            // if let Some(size) = input.window_resized() {
+            //     if let Err(err) = pixels.resize_surface(size.width, size.height) {
+            //         log_error("pixels.resize_surface", err);
+            //         elwt.exit();
+            //         return;
+            //     }
+            // }
 
             let mut core = arc_parent.lock().unwrap();
             // Handle key presses
@@ -155,6 +226,13 @@ fn main() {
             window.request_redraw();
         }
     });
+}
+
+fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
+    error!("{method_name}() failed: {err}");
+    for source in err.sources().skip(1) {
+        error!("  Caused by: {source}");
+    }
 }
 
 fn draw_core(core: &mut core::Chip8, frame: &mut [u8]) {
