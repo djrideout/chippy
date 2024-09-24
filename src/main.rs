@@ -1,12 +1,12 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
 
 mod core;
-//mod utils;
+mod utils;
 mod audio;
 
 use std::sync::{Arc, Mutex};
 use clap::Parser;
-use pixels::{Error, Pixels, SurfaceTexture};
+use pixels::{Pixels, SurfaceTexture};
 use winit::dpi::LogicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::EventLoop;
@@ -55,22 +55,40 @@ const KEYMAP: [KeyCode; 16] = [
     KeyCode::KeyV
 ];
 
-// Constants
-const SCALE: usize = 6;
-// const PLANE_COLORS: [Color; 3] = [
-//     BLACK, // Plane 0
-//     GRAY, // Plane 1
-//     LIGHTGRAY // Planes 0 and 1
-// ];
-
-struct World {
-    box_x: i16,
-    box_y: i16,
-    velocity_x: i16,
-    velocity_y: i16,
-}
-
 fn main() {
+    // Handle arguments
+    let _args = Args::parse();
+    let _rom = utils::load_rom(&_args.input);
+    let mut clock = _args.clock;
+    if clock == 0 {
+        match _args.target {
+            core::Target::Chip => clock = 11,
+            core::Target::SuperModern => clock = 30,
+            core::Target::SuperLegacy => clock = 30,
+            core::Target::XO => clock = 1000
+        }
+    }
+
+    // Create core
+    let core = core::Chip8::new(_args.target, clock, _rom, 48000);
+
+    // Setup audio
+    // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
+    let arc_parent = Arc::new(Mutex::new(core));
+    let arc_child = arc_parent.clone();
+
+    let get_sample = move |i: usize| {
+        // Lock the mutex while generating samples in the audio thread
+        let mut core = arc_child.lock().unwrap();
+        if i % 2 == 0 {
+            while !core.run_inst() {}
+        }
+        core.get_sample()
+    };
+    let player = audio::AudioPlayer::new(48000, get_sample);
+    player.start();
+
+    // Set up graphics buffer and window
     let event_loop = EventLoop::new().unwrap();
     let mut input = WinitInputHelper::new();
     let window = {
@@ -87,7 +105,6 @@ fn main() {
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
         Pixels::new(core::WIDTH as u32, core::HEIGHT as u32, surface_texture).unwrap()
     };
-    let mut world = World::new();
     let res = event_loop.run(|event, elwt| {
         // Draw the current frame
         if let Event::WindowEvent {
@@ -95,7 +112,9 @@ fn main() {
             ..
         } = event
         {
-            world.draw(pixels.frame_mut());
+            let mut core = arc_parent.lock().unwrap();
+            draw_core(&mut core, pixels.frame_mut());
+            drop(core);
             if let Err(err) = pixels.render() {
                 elwt.exit();
                 return;
@@ -118,135 +137,45 @@ fn main() {
                 }
             }
 
+            let mut core = arc_parent.lock().unwrap();
+            // Handle key presses
+            for i in 0 ..= 0xF as usize {
+                core.prev_keys[i] = core.curr_keys[i];
+                if input.key_released(KEYMAP[i]) {
+                    core.curr_keys[i] = false;
+                } else if input.key_pressed(KEYMAP[i]) || input.key_held(KEYMAP[i]) {
+                    core.curr_keys[i] = true;
+                } else {
+                    core.curr_keys[i] = false;
+                }
+            }
+            drop(core);
+
             // Update internal state and request a redraw
-            world.update();
             window.request_redraw();
         }
     });
-
-
-    // Handle arguments
-    // let _args = Args::parse();
-    // //let _rom = utils::load_rom(&_args.input).await;
-    // let mut clock = _args.clock;
-    // if clock == 0 {
-    //     match _args.target {
-    //         core::Target::Chip => clock = 11,
-    //         core::Target::SuperModern => clock = 30,
-    //         core::Target::SuperLegacy => clock = 30,
-    //         core::Target::XO => clock = 1000
-    //     }
-    // }
-
-    // request_new_screen_size((core::WIDTH * SCALE) as f32, (core::HEIGHT * SCALE) as f32);
-
-    // let core = core::Chip8::new(_args.target, clock, _rom, 48000);
-
-    // // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
-    // let arc_parent = Arc::new(Mutex::new(core));
-    // let arc_child = arc_parent.clone();
-    
-    // let get_sample = move |i: usize| {
-    //     // Lock the mutex while generating samples in the audio thread
-    //     let mut core = arc_child.lock().unwrap();
-    //     if i % 2 == 0 {
-    //         while !core.run_inst() {}
-    //     }
-    //     core.get_sample()
-    // };
-    // let player = audio::AudioPlayer::new(48000, get_sample);
-    // player.start();
-
-    // loop {
-    //     // Lock the mutex while handling inputs/rendering
-    //     let mut core = arc_parent.lock().unwrap();
-
-    //     // Handle key presses
-    //     for i in 0 ..= 0xF as usize {
-    //         core.prev_keys[i] = core.curr_keys[i];
-    //         if is_key_released(KEYMAP[i]) {
-    //             core.curr_keys[i] = false;
-    //         } else if is_key_pressed(KEYMAP[i]) || is_key_down(KEYMAP[i]) {
-    //             core.curr_keys[i] = true;
-    //         } else {
-    //             core.curr_keys[i] = false;
-    //         }
-    //     }
-
-    //     // Render display
-    //     let _true_scale = (SCALE << !core.high_res as u32) as f32;
-    //     clear_background(WHITE);
-
-    //     for i in 0 .. core::HEIGHT {
-    //         let _both = core.buffer_planes[0][i] & core.buffer_planes[1][i];
-    //         let _zero = core.buffer_planes[0][i] & !_both;
-    //         let _one = core.buffer_planes[1][i] & !_both;
-    //         for j in 0 .. core::WIDTH {
-    //             if _zero & (1 << j) > 0 {
-    //                 draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[0]);
-    //             }
-    //             if _one & (1 << j) > 0 {
-    //                 draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[1]);
-    //             }
-    //             if _both & (1 << j) > 0 {
-    //                 draw_rectangle(_true_scale * (core::WIDTH - 1 - j) as f32, _true_scale * i as f32, _true_scale, _true_scale, PLANE_COLORS[2]);
-    //             }
-    //         }
-    //     }
-
-    //     // Manually unlock the mutex while waiting for the next frame so the audio thread can drive the emulation
-    //     drop(core);
-
-    //     next_frame().await;
-    // }
 }
 
-const BOX_SIZE: i16 = 64;
+fn draw_core(core: &mut core::Chip8, frame: &mut [u8]) {
+    for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+        let x = core::WIDTH - 1 - (i % core::WIDTH);
+        let y = i / core::WIDTH;
 
-impl World {
-    /// Create a new `World` instance that can draw a moving box.
-    fn new() -> Self {
-        Self {
-            box_x: 24,
-            box_y: 16,
-            velocity_x: 1,
-            velocity_y: 1,
-        }
-    }
+        let _both = core.buffer_planes[0][y] & core.buffer_planes[1][y];
+        let _zero = core.buffer_planes[0][y] & !_both;
+        let _one = core.buffer_planes[1][y] & !_both;
 
-    /// Update the `World` internal state; bounce the box around the screen.
-    fn update(&mut self) {
-        if self.box_x <= 0 || self.box_x + BOX_SIZE > core::WIDTH as i16 {
-            self.velocity_x *= -1;
-        }
-        if self.box_y <= 0 || self.box_y + BOX_SIZE > core::HEIGHT as i16 {
-            self.velocity_y *= -1;
-        }
+        let rgba = if _both & (1 << x) > 0 {
+            [0xd3, 0xd3, 0xd3, 0xff]
+        } else if _zero & (1 << x) > 0 {
+            [0x00, 0x00, 0x00, 0xff]
+        } else if _one & (1 << x) > 0 {
+            [0x80, 0x80, 0x80, 0xff]
+        } else {
+            [0xFF, 0xFF, 0xFF, 0xff]
+        };
 
-        self.box_x += self.velocity_x;
-        self.box_y += self.velocity_y;
-    }
-
-    /// Draw the `World` state to the frame buffer.
-    ///
-    /// Assumes the default texture format: `wgpu::TextureFormat::Rgba8UnormSrgb`
-    fn draw(&self, frame: &mut [u8]) {
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-            let x = (i % core::WIDTH as usize) as i16;
-            let y = (i / core::WIDTH as usize) as i16;
-
-            let inside_the_box = x >= self.box_x
-                && x < self.box_x + BOX_SIZE
-                && y >= self.box_y
-                && y < self.box_y + BOX_SIZE;
-
-            let rgba = if inside_the_box {
-                [0x5e, 0x48, 0xe8, 0xff]
-            } else {
-                [0x48, 0xb2, 0xe8, 0xff]
-            };
-
-            pixel.copy_from_slice(&rgba);
-        }
+        pixel.copy_from_slice(&rgba);
     }
 }
