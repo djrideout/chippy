@@ -1,4 +1,5 @@
 use clap::ValueEnum;
+use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
 
 #[cfg(test)]
 mod test;
@@ -93,6 +94,7 @@ pub struct Chip8 {
     audio_buffer: u128,
     audio_frequency: f32,
     audio_oscillator: f32,
+    rand_hasher: DefaultHasher
 }
 
 impl Chip8 {
@@ -129,6 +131,7 @@ impl Chip8 {
             audio_buffer: 0x0000FFFF0000FFFF0000FFFF0000FFFF, // Arbitrary pattern for non-XO buzzer
             audio_frequency: 4000.0,
             audio_oscillator: 0.0,
+            rand_hasher: RandomState::new().build_hasher()
         };
 
         // Load fonts into memory
@@ -584,8 +587,8 @@ impl Chip8 {
                 0xC000 => {
                     // Cxkk - RND Vx, byte
                     // Set Vx = random byte AND kk.
-                    //self.r_v[_x] = thread_rng().gen::<u8>() & _kk;
-                    self.r_v[_x] = 0x69;
+                    self.rand_hasher.write_u8(self.r_v[_x]);
+                    self.r_v[_x] = self.rand_hasher.finish() as u8 & _kk;
                 }
                 0xD000 => {
                     // Dxyn - DRW Vx, Vy, nibble / Dxy0 - DRW Vx, Vy, 0
