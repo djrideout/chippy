@@ -11,9 +11,8 @@ use clap::Parser;
 use pixels::{Pixels, SurfaceTexture};
 use std::rc::Rc;
 use winit::dpi::LogicalSize;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::EventLoop;
-use winit::keyboard::KeyCode;
+use winit::event::{Event, VirtualKeyCode};
+use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
@@ -39,23 +38,23 @@ struct Args {
 //     Q W E R   ->   4 5 6 D
 //     A S D F        7 8 9 E
 //     Z X C V        A 0 B F
-const KEYMAP: [KeyCode; 16] = [
-    KeyCode::KeyX,
-    KeyCode::Digit1,
-    KeyCode::Digit2,
-    KeyCode::Digit3,
-    KeyCode::KeyQ,
-    KeyCode::KeyW,
-    KeyCode::KeyE,
-    KeyCode::KeyA,
-    KeyCode::KeyS,
-    KeyCode::KeyD,
-    KeyCode::KeyZ,
-    KeyCode::KeyC,
-    KeyCode::Digit4,
-    KeyCode::KeyR,
-    KeyCode::KeyF,
-    KeyCode::KeyV
+const KEYMAP: [VirtualKeyCode; 16] = [
+    VirtualKeyCode::X,
+    VirtualKeyCode::Key1,
+    VirtualKeyCode::Key2,
+    VirtualKeyCode::Key3,
+    VirtualKeyCode::Q,
+    VirtualKeyCode::W,
+    VirtualKeyCode::E,
+    VirtualKeyCode::A,
+    VirtualKeyCode::S,
+    VirtualKeyCode::D,
+    VirtualKeyCode::Z,
+    VirtualKeyCode::C,
+    VirtualKeyCode::Key4,
+    VirtualKeyCode::R,
+    VirtualKeyCode::F,
+    VirtualKeyCode::V
 ];
 
 fn main() {
@@ -110,7 +109,7 @@ async fn run() {
     player.start();
 
     // Set up graphics buffer and window
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
     let window = {
         let size = LogicalSize::new(core::WIDTH as f64, core::HEIGHT as f64);
@@ -141,7 +140,7 @@ async fn run() {
         let window = Rc::clone(&window);
 
         // Initialize winit window with current dimensions of browser client
-        window.set_min_inner_size(Some(get_window_size()));
+        window.set_inner_size(get_window_size());
 
         let client_window = web_sys::window().unwrap();
 
@@ -150,7 +149,7 @@ async fn run() {
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())
             .and_then(|body| {
-                body.append_child(&window.canvas().unwrap())
+                body.append_child(&web_sys::Element::from(window.canvas()))
                     .ok()
             })
             .expect("couldn't append canvas to document body");
@@ -159,7 +158,7 @@ async fn run() {
         // on event trigger
         let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |_e: web_sys::Event| {
             let size = get_window_size();
-            window.set_min_inner_size(Some(size))
+            window.set_inner_size(size)
         }) as Box<dyn FnMut(_)>);
         client_window
             .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
@@ -169,24 +168,19 @@ async fn run() {
 
     let mut pixels = {
         let window_size = window.inner_size();
-        //let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        let surface_texture = SurfaceTexture::new(core::WIDTH as u32, core::HEIGHT as u32, &window);
+        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, window.as_ref());
         Pixels::new_async(core::WIDTH as u32, core::HEIGHT as u32, surface_texture).await.expect("Pixels error")
     };
 
-    let res = event_loop.run(|event, elwt| {
+    let res = event_loop.run(move |event, _, control_flow| {
         // Draw the current frame
-        if let Event::WindowEvent {
-            event: WindowEvent::RedrawRequested,
-            ..
-        } = event
-        {
+        if let Event::RedrawRequested(_) = event {
             let mut core = arc_parent.lock().unwrap();
             draw_core(&mut core, pixels.frame_mut());
             drop(core);
             if let Err(err) = pixels.render() {
                 log_error("pixels.render", err);
-                elwt.exit();
+                *control_flow = ControlFlow::Exit;
                 return;
             }
         }
@@ -194,19 +188,19 @@ async fn run() {
         // Handle input events
         if input.update(&event) {
             // Close events
-            if input.key_pressed(KeyCode::Escape) || input.close_requested() {
-                elwt.exit();
+            if input.key_pressed(VirtualKeyCode::Escape) || input.close_requested() {
+                *control_flow = ControlFlow::Exit;
                 return;
             }
 
             // Resize the window
-            // if let Some(size) = input.window_resized() {
-            //     if let Err(err) = pixels.resize_surface(size.width, size.height) {
-            //         log_error("pixels.resize_surface", err);
-            //         elwt.exit();
-            //         return;
-            //     }
-            // }
+            if let Some(size) = input.window_resized() {
+                if let Err(err) = pixels.resize_surface(size.width, size.height) {
+                    log_error("pixels.resize_surface", err);
+                    *control_flow = ControlFlow::Exit;
+                    return;
+                }
+            }
 
             let mut core = arc_parent.lock().unwrap();
             // Handle key presses

@@ -10,8 +10,8 @@ clap = { version = "4.5.16", features = ["derive"] }
 cpal = { version = "0.15.3", features = ["wasm-bindgen"] }
 pixels = "0.14.0"
 pretty_assertions = "1.4.0"
-winit = { version = "0.29", features = ["rwh_05"] }
-winit_input_helper = "0.15"
+winit = "0.28"
+winit_input_helper = "0.14"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
