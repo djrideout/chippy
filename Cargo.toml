@@ -4,11 +4,29 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+error-iter = "0.4"
+log = "0.4"
 clap = { version = "4.5.16", features = ["derive"] }
-cpal = "0.15.3"
-macroquad = "0.4.13"
+cpal = { version = "0.15.3", features = ["wasm-bindgen"] }
+pixels = "0.14.0"
 pretty_assertions = "1.4.0"
-rand = "0.8.5"
+winit = "0.28"
+winit_input_helper = "0.14"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+console_log = "1"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["GpuTextureFormat"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = "0.3"
+
+[workspace]
+members = [
+    "run-wasm",
+]
 
 [[bin]]
 name = "chippy"
