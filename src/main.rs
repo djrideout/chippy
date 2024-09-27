@@ -73,7 +73,7 @@ fn main() {
 async fn run() {
     // Browser "arguments"
     // These are hardcoded for now until I create a more flexible web view
-    let _rom = include_bytes!("../nyancat.ch8").to_vec();
+    let _rom = include_bytes!("../roms/1-chip8-logo.ch8").to_vec();
     let clock = 20000;
     let target = core::Target::XO;
     let mut core = core::Chip8::new(target, clock, _rom, 48000);
