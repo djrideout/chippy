@@ -71,25 +71,29 @@ fn main() {
 }
 
 async fn run() {
-    // Handle arguments
-    //let _args = Args::parse();
-    //let _rom = utils::load_rom(&_args.input);
+    // Browser "arguments"
+    // These are hardcoded for now until I create a more flexible web view
     let _rom = include_bytes!("../nyancat.ch8").to_vec();
     let clock = 20000;
     let target = core::Target::XO;
-    // let mut clock = _args.clock;
-    // if clock == 0 {
-    //     match _args.target {
-    //         core::Target::Chip => clock = 11,
-    //         core::Target::SuperModern => clock = 30,
-    //         core::Target::SuperLegacy => clock = 30,
-    //         core::Target::XO => clock = 1000
-    //     }
-    // }
+    let mut core = core::Chip8::new(target, clock, _rom, 48000);
 
-    // Create core
-    let core = core::Chip8::new(target, clock, _rom, 48000);
-    //let core = core::Chip8::new(_args.target, clock, _rom, 48000);
+    // Handle CLI arguments
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _args = Args::parse();
+        let _rom = utils::load_rom(&_args.input);
+        let mut clock = _args.clock;
+        if clock == 0 {
+            match _args.target {
+                core::Target::Chip => clock = 11,
+                core::Target::SuperModern => clock = 30,
+                core::Target::SuperLegacy => clock = 30,
+                core::Target::XO => clock = 1000
+            }
+        }
+        core = core::Chip8::new(_args.target, clock, _rom, 48000);
+    }
 
     // Setup audio
     // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
@@ -97,7 +101,6 @@ async fn run() {
     let arc_child = arc_parent.clone();
 
     let get_sample = move |i: usize| {
-        //info!("fuck");
         // Lock the mutex while generating samples in the audio thread
         let mut core = arc_child.lock().unwrap();
         if i % 2 == 0 {
@@ -172,7 +175,7 @@ async fn run() {
         Pixels::new_async(core::WIDTH as u32, core::HEIGHT as u32, surface_texture).await.expect("Pixels error")
     };
 
-    let res = event_loop.run(move |event, _, control_flow| {
+    let _res = event_loop.run(move |event, _, control_flow| {
         // Draw the current frame
         if let Event::RedrawRequested(_) = event {
             let mut core = arc_parent.lock().unwrap();
@@ -231,8 +234,8 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
 
 fn draw_core(core: &mut core::Chip8, frame: &mut [u8]) {
     for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-        let x = core::WIDTH - 1 - (i % core::WIDTH);
-        let y = i / core::WIDTH;
+        let x = core::WIDTH - 1 - (i % core::WIDTH >> !core.high_res as u8);
+        let y = i / core::WIDTH >> !core.high_res as u8;
 
         let _both = core.buffer_planes[0][y] & core.buffer_planes[1][y];
         let _zero = core.buffer_planes[0][y] & !_both;

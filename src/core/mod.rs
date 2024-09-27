@@ -702,7 +702,7 @@ impl Chip8 {
         ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
     }
 
-    //#[cfg(test)]
+    #[cfg(test)]
     pub fn run_frame(&mut self) {
         loop {
             self.run_inst();
