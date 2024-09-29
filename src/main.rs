@@ -119,7 +119,7 @@ async fn run() {
         let size = LogicalSize::new(core::WIDTH as f64, core::HEIGHT as f64);
         WindowBuilder::new()
             .with_title("chippy")
-            .with_inner_size(size)
+            .with_inner_size(size.to_physical::<f64>(5.0))
             .with_min_inner_size(size)
             .build(&event_loop)
             .expect("WindowBuilder error")
