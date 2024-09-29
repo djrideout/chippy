@@ -71,16 +71,17 @@ fn main() {
 }
 
 async fn run() {
-    // Browser "arguments"
-    // These are hardcoded for now until I create a more flexible web view
-    let _rom = include_bytes!("../roms/1-chip8-logo.ch8").to_vec();
-    let clock = 20000;
-    let target = core::Target::XO;
-    let mut core = core::Chip8::new(target, clock, _rom, 48000);
+    // Browser arguments are hardcoded for now until I create a more flexible web view
+    #[cfg(target_arch = "wasm32")]
+    let core = {
+        let _rom = include_bytes!("../roms/1-chip8-logo.ch8").to_vec();
+        let clock = 20000;
+        let target = core::Target::XO;
+        core::Chip8::new(target, clock, _rom, 48000)
+    };
 
-    // Handle CLI arguments
     #[cfg(not(target_arch = "wasm32"))]
-    {
+    let core = {
         let _args = Args::parse();
         let _rom = utils::load_rom(&_args.input);
         let mut clock = _args.clock;
@@ -92,8 +93,8 @@ async fn run() {
                 core::Target::XO => clock = 1000
             }
         }
-        core = core::Chip8::new(_args.target, clock, _rom, 48000);
-    }
+        core::Chip8::new(_args.target, clock, _rom, 48000)
+    };
 
     // Setup audio
     // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread

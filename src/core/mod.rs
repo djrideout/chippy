@@ -7,9 +7,9 @@ mod test;
 #[derive(ValueEnum, Debug, Clone, Default, PartialEq)]
 pub enum Target {
     Chip, // This is "chip-8" in Gulrak's opcode table
-    #[default]
     SuperModern, // This is "schipc" in Gulrak's opcode table
     SuperLegacy, // This is "schip-1.1" in Gulrak's opcode table
+    #[default]
     XO // This is "xo-chip" in Gulrak's opcode table
 }
 
@@ -60,8 +60,21 @@ pub const HEIGHT: usize = 64;
 pub const PLANE_COUNT: usize = 2;
 
 pub struct Chip8 {
+    // Public members
+    // For high-res resolution mode
+    pub high_res: bool,
+    // Planes ready for rendering
+    pub buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
+    // Key press states
+    pub prev_keys: [bool; 16],
+    pub curr_keys: [bool; 16],
+
+    // Private members
+    // The target platform
     target: Target,
+    // Instructions per second
     clock: u32,
+    // Remaining cycles for a frame
     remaining: u32,
     // General purpose registers
     r_v: [u8; 16], // 16 general purpose "Vx" registers (x is 0-F)
@@ -75,25 +88,22 @@ pub struct Chip8 {
     // Stack
     stack: [u16; 16],
     // Memory
-    pub mem: [u8; 0x10000], // only XO-CHIP officially supports 0x10000, the rest have 0x1000 but just use the full range for simplicity
+    mem: [u8; 0x10000], // only XO-CHIP officially supports 0x10000, the rest have 0x1000 but just use the full range for simplicity
     // Halting flag (waiting for input/drawing)
     halting: bool,
     // Previous opcode, for halting purposes
     prev_op: u16,
     // Display (128x64, 2 planes)
     enabled_planes: u8, // Flags for which of the 2 planes to draw on. If the bit is set, draw on the plane.
-    pub high_res: bool, // For high-res resolution mode
-    pub active_planes: [[u128; HEIGHT]; PLANE_COUNT],
-    pub buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
-    // Key press states
-    pub prev_keys: [bool; 16],
-    pub curr_keys: [bool; 16],
+    active_planes: [[u128; HEIGHT]; PLANE_COUNT],
+    // Audio
     seconds_per_output_sample: f32,
     seconds_per_instruction: f32,
     audio_time: f32,
     audio_buffer: u128,
     audio_frequency: f32,
     audio_oscillator: f32,
+    // For the rando instruction
     rand_hasher: DefaultHasher
 }
 
