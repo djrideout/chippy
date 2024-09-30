@@ -71,16 +71,17 @@ fn main() {
 }
 
 async fn run() {
-    // Browser "arguments"
-    // These are hardcoded for now until I create a more flexible web view
-    let _rom = include_bytes!("../roms/1-chip8-logo.ch8").to_vec();
-    let clock = 20000;
-    let target = core::Target::XO;
-    let mut core = core::Chip8::new(target, clock, _rom, 48000);
+    // Browser arguments are hardcoded for now until I create a more flexible web view
+    #[cfg(target_arch = "wasm32")]
+    let core = {
+        let _rom = include_bytes!("../roms/1-chip8-logo.ch8").to_vec();
+        let clock = 20000;
+        let target = core::Target::XO;
+        core::Chip8::new(target, clock, _rom, 48000)
+    };
 
-    // Handle CLI arguments
     #[cfg(not(target_arch = "wasm32"))]
-    {
+    let core = {
         let _args = Args::parse();
         let _rom = utils::load_rom(&_args.input);
         let mut clock = _args.clock;
@@ -92,8 +93,8 @@ async fn run() {
                 core::Target::XO => clock = 1000
             }
         }
-        core = core::Chip8::new(_args.target, clock, _rom, 48000);
-    }
+        core::Chip8::new(_args.target, clock, _rom, 48000)
+    };
 
     // Setup audio
     // Create Arc pointer to safely share the Chip8 core between the main thread and the audio thread
@@ -118,7 +119,7 @@ async fn run() {
         let size = LogicalSize::new(core::WIDTH as f64, core::HEIGHT as f64);
         WindowBuilder::new()
             .with_title("chippy")
-            .with_inner_size(size)
+            .with_inner_size(size.to_physical::<f64>(5.0))
             .with_min_inner_size(size)
             .build(&event_loop)
             .expect("WindowBuilder error")
@@ -207,7 +208,7 @@ async fn run() {
 
             let mut core = arc_parent.lock().unwrap();
             // Handle key presses
-            for i in 0 ..= 0xF as usize {
+            for i in 0 ..= 0xFusize {
                 core.prev_keys[i] = core.curr_keys[i];
                 if input.key_released(KEYMAP[i]) {
                     core.curr_keys[i] = false;
@@ -242,13 +243,13 @@ fn draw_core(core: &mut core::Chip8, frame: &mut [u8]) {
         let _one = core.buffer_planes[1][y] & !_both;
 
         let rgba = if _both & (1 << x) > 0 {
-            [0xd3, 0xd3, 0xd3, 0xff]
+            [0x99, 0x66, 0x00, 0xff]
         } else if _zero & (1 << x) > 0 {
-            [0x00, 0x00, 0x00, 0xff]
+            [0xff, 0xcc, 0x00, 0xff]
         } else if _one & (1 << x) > 0 {
-            [0x80, 0x80, 0x80, 0xff]
+            [0xff, 0x66, 0x00, 0xff]
         } else {
-            [0xFF, 0xFF, 0xFF, 0xff]
+            [0x66, 0x22, 0x00, 0xff]
         };
 
         pixel.copy_from_slice(&rgba);
