@@ -1,5 +1,8 @@
+// Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
+
 use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
+use crate::frontend::Core;
 
 #[cfg(test)]
 mod test;
@@ -158,7 +161,19 @@ impl Chip8 {
         return chip8;
     }
 
-    pub fn run_inst(&mut self) -> bool {
+    #[cfg(test)]
+    pub fn run_frame(&mut self) {
+        loop {
+            self.run_inst();
+            if self.remaining == self.clock {
+                break;
+            }
+        }
+    }
+}
+
+impl Core for Chip8 {
+    fn run_inst(&mut self) -> bool {
         self.remaining -= 1;
 
         // Get opcode
@@ -705,20 +720,43 @@ impl Chip8 {
         sample_ready
     }
 
-    pub fn get_sample(&self) -> f32 {
+    fn get_sample(&mut self) -> f32 {
         if self.r_audio == 0 {
             return 0.0;
         }
         ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
     }
 
-    #[cfg(test)]
-    pub fn run_frame(&mut self) {
-        loop {
-            self.run_inst();
-            if self.remaining == self.clock {
-                break;
-            }
+    fn press_key(&mut self, key_index: usize) {
+        self.prev_keys[key_index] = self.curr_keys[key_index];
+        self.curr_keys[key_index] = true;
+    }
+
+    fn release_key(&mut self, key_index: usize) {
+        self.prev_keys[key_index] = self.curr_keys[key_index];
+        self.curr_keys[key_index] = false;
+    }
+
+    fn draw(&mut self, frame: &mut [u8]) {
+        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+            let x = WIDTH - 1 - (i % WIDTH >> !self.high_res as u8);
+            let y = i / WIDTH >> !self.high_res as u8;
+    
+            let _both = self.buffer_planes[0][y] & self.buffer_planes[1][y];
+            let _zero = self.buffer_planes[0][y] & !_both;
+            let _one = self.buffer_planes[1][y] & !_both;
+    
+            let rgba = if _both & (1 << x) > 0 {
+                [0x99, 0x66, 0x00, 0xff]
+            } else if _zero & (1 << x) > 0 {
+                [0xff, 0xcc, 0x00, 0xff]
+            } else if _one & (1 << x) > 0 {
+                [0xff, 0x66, 0x00, 0xff]
+            } else {
+                [0x66, 0x22, 0x00, 0xff]
+            };
+    
+            pixel.copy_from_slice(&rgba);
         }
     }
 }

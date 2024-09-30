@@ -1,5 +1,3 @@
-// The audio playback thread
-
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
 pub struct AudioPlayer {
@@ -33,7 +31,7 @@ impl AudioPlayer {
         };
     }
 
-    pub fn start(&self) {
+    pub fn run(&self) {
         match self.output_stream.play() {
             Ok(_) => {},
             Err(err) => panic!("Stream play error: {}", err)
