@@ -208,7 +208,7 @@ async fn run() {
 
             let mut core = arc_parent.lock().unwrap();
             // Handle key presses
-            for i in 0 ..= 0xF as usize {
+            for i in 0 ..= 0xFusize {
                 core.prev_keys[i] = core.curr_keys[i];
                 if input.key_released(KEYMAP[i]) {
                     core.curr_keys[i] = false;
@@ -243,13 +243,13 @@ fn draw_core(core: &mut core::Chip8, frame: &mut [u8]) {
         let _one = core.buffer_planes[1][y] & !_both;
 
         let rgba = if _both & (1 << x) > 0 {
-            [0xd3, 0xd3, 0xd3, 0xff]
+            [0x99, 0x66, 0x00, 0xff]
         } else if _zero & (1 << x) > 0 {
-            [0x00, 0x00, 0x00, 0xff]
+            [0xff, 0xcc, 0x00, 0xff]
         } else if _one & (1 << x) > 0 {
-            [0x80, 0x80, 0x80, 0xff]
+            [0xff, 0x66, 0x00, 0xff]
         } else {
-            [0xFF, 0xFF, 0xFF, 0xff]
+            [0x66, 0x22, 0x00, 0xff]
         };
 
         pixel.copy_from_slice(&rgba);
