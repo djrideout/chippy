@@ -14,16 +14,16 @@ pub enum SyncModes {
 pub trait Core: Send + 'static {
     fn get_width(&self) -> usize;
     fn get_height(&self) -> usize;
-    fn set_seconds_per_output_sample(&mut self, value: f32);
     fn get_sample_queue_length(&self) -> usize;
+    fn is_mono(&self) -> bool;
+    fn draw(&self, frame: &mut [u8]);
+    fn peek_sample(&self) -> f32;
+    fn set_seconds_per_output_sample(&mut self, value: f32);
     fn press_key(&mut self, key_index: usize);
     fn release_key(&mut self, key_index: usize);
     fn run_inst(&mut self) -> bool;
     fn run_frame(&mut self);
-    fn is_mono(&mut self) -> bool;
     fn get_sample(&mut self) -> f32;
-    fn peek_sample(&mut self) -> f32;
-    fn draw(&mut self, frame: &mut [u8]);
 }
 
 pub struct Frontend<const N: usize> {

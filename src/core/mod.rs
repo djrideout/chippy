@@ -746,15 +746,14 @@ impl Core for Chip8 {
             None => 0.0
         }
     }
-    fn peek_sample(&mut self) -> f32 {
-        if self.sample_queue.len() > 0 {
-            self.sample_queue[self.sample_queue.len() - 1]
-        } else {
-            0.0
+    fn peek_sample(&self) -> f32 {
+        match self.sample_queue.len() {
+            0 => 0.0,
+            _ => self.sample_queue[self.sample_queue.len() - 1]
         }
     }
 
-    fn is_mono(&mut self) -> bool {
+    fn is_mono(&self) -> bool {
         true
     }
 
@@ -768,7 +767,7 @@ impl Core for Chip8 {
         self.curr_keys[key_index] = false;
     }
 
-    fn draw(&mut self, frame: &mut [u8]) {
+    fn draw(&self, frame: &mut [u8]) {
         for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
             let x = WIDTH - 1 - (i % WIDTH >> !self.high_res as u8);
             let y = i / WIDTH >> !self.high_res as u8;
