@@ -10,7 +10,7 @@ macro_rules! core_tests {
             #[test]
             fn $name() {
                 let (target, rom, expected, mem_val) = $value;
-                let mut chip8 = core::Chip8::new(target, 16, rom.to_vec(), 48000);
+                let mut chip8 = core::Chip8::new(target, 16, rom.to_vec());
                 chip8.mem[0x1FF] = mem_val; // Set correct mode without keypad input
                 for _i in 0 .. 600 {
                     chip8.run_frame();

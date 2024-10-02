@@ -58,19 +58,19 @@ const BIG_FONT_SET: [u8; 160] = [
 
 // Constants
 const FRAME_RATE: f32 = 60.0;
-pub const WIDTH: usize = 128;
-pub const HEIGHT: usize = 64;
-pub const PLANE_COUNT: usize = 2;
+const WIDTH: usize = 128;
+const HEIGHT: usize = 64;
+const PLANE_COUNT: usize = 2;
 
 pub struct Chip8 {
     // Public members
     // For high-res resolution mode
-    pub high_res: bool,
+    high_res: bool,
     // Planes ready for rendering
-    pub buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
+    buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
     // Key press states
-    pub prev_keys: [bool; 16],
-    pub curr_keys: [bool; 16],
+    prev_keys: [bool; 16],
+    curr_keys: [bool; 16],
 
     // Private members
     // The target platform
@@ -111,7 +111,7 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-    pub fn new(target: Target, clock: u32, rom: Vec<u8>, output_frequency: u32) -> Chip8 {
+    pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
             clock,
@@ -138,7 +138,7 @@ impl Chip8 {
             ],
             prev_keys: [false; 16],
             curr_keys: [false; 16],
-            seconds_per_output_sample: 1.0 / output_frequency as f32,
+            seconds_per_output_sample: 0.0, // This is set by the frontend before emulation starts
             seconds_per_instruction: 1.0 / (FRAME_RATE * clock as f32),
             audio_time: 0.0,
             audio_buffer: 0x0000FFFF0000FFFF0000FFFF0000FFFF, // Arbitrary pattern for non-XO buzzer
@@ -173,6 +173,18 @@ impl Chip8 {
 }
 
 impl Core for Chip8 {
+    fn get_width(&self) -> usize {
+        WIDTH
+    }
+
+    fn get_height(&self) -> usize {
+        HEIGHT
+    }
+
+    fn set_seconds_per_output_sample(&mut self, value: f32) {
+        self.seconds_per_output_sample = value;
+    }
+
     fn run_inst(&mut self) -> bool {
         self.remaining -= 1;
 

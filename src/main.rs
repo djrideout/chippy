@@ -66,7 +66,7 @@ async fn run() {
         let _rom = include_bytes!("../nyancat.ch8").to_vec();
         let clock = 20000;
         let target = core::Target::XO;
-        core::Chip8::new(target, clock, _rom, 48000)
+        core::Chip8::new(target, clock, _rom)
     };
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -82,9 +82,9 @@ async fn run() {
                 core::Target::XO => clock = 1000
             }
         }
-        core::Chip8::new(_args.target, clock, _rom, 48000)
+        core::Chip8::new(_args.target, clock, _rom)
     };
 
-    let frontend = frontend::Frontend::new(core, 48000, core::WIDTH, core::HEIGHT, KEYMAP);
+    let frontend = frontend::Frontend::new(core, KEYMAP);
     frontend.start().await
 }
