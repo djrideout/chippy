@@ -10,15 +10,15 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
-pub struct Display {
+pub struct Display<const N: usize> {
     core: Arc<Mutex<dyn Core>>,
     width: usize,
     height: usize,
-    keymap: Arc<Mutex<[VirtualKeyCode]>>,
+    keymap: [VirtualKeyCode; N],
 }
 
-impl Display {
-    pub fn new(core: Arc<Mutex<impl Core>>, width: usize, height: usize, keymap: Arc<Mutex<[VirtualKeyCode]>>) -> Display {
+impl<const N: usize> Display<N> {
+    pub fn new(core: Arc<Mutex<impl Core>>, width: usize, height: usize, keymap: [VirtualKeyCode; N]) -> Display<N> {
         Display {
             core,
             width,
@@ -93,7 +93,7 @@ impl Display {
         };
 
         let core = self.core.clone();
-        let keymap = self.keymap.clone();
+        let keymap = self.keymap;
 
         event_loop.run(move |event, _, control_flow| {
             // Draw the current frame
@@ -127,7 +127,6 @@ impl Display {
     
                 let mut core = core.lock().unwrap();
                 // Handle key presses
-                let keymap = keymap.lock().unwrap();
                 for i in 0 .. keymap.len() {
                     if input.key_released(keymap[i]) {
                         core.release_key(i);

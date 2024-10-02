@@ -4,7 +4,6 @@ mod core;
 
 use clap::Parser;
 use winit::event::VirtualKeyCode;
-use std::sync::{Arc, Mutex};
 
 // Command line arguments
 #[derive(Parser, Debug)]
@@ -86,6 +85,6 @@ async fn run() {
         core::Chip8::new(_args.target, clock, _rom, 48000)
     };
 
-    let frontend = frontend::Frontend::new(core, 48000, core::WIDTH, core::HEIGHT, Arc::new(Mutex::new(KEYMAP)));
+    let frontend = frontend::Frontend::new(core, 48000, core::WIDTH, core::HEIGHT, KEYMAP);
     frontend.start().await
 }

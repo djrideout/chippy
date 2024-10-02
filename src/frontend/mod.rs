@@ -12,13 +12,13 @@ pub trait Core: Send + 'static {
     fn draw(&mut self, frame: &mut [u8]);
 }
 
-pub struct Frontend {
-    display: display::Display,
+pub struct Frontend<const N: usize> {
+    display: display::Display<N>,
     audio_player: audio::AudioPlayer
 }
 
-impl Frontend {
-    pub fn new(core: impl Core, output_frequency: u32, width: usize, height: usize, keymap: Arc<Mutex<[VirtualKeyCode]>>) -> Frontend {
+impl<const N: usize> Frontend<N> {
+    pub fn new(core: impl Core, output_frequency: u32, width: usize, height: usize, keymap: [VirtualKeyCode; N]) -> Frontend<N> {
         // Create Arcs to share the core between the audio and rendering threads
         let arc_parent = Arc::new(Mutex::new(core));
         let arc_child = arc_parent.clone();
