@@ -3,6 +3,7 @@
 use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
 use crate::frontend::Core;
+use std::collections::VecDeque;
 
 #[cfg(test)]
 mod test;
@@ -106,6 +107,7 @@ pub struct Chip8 {
     audio_buffer: u128,
     audio_frequency: f32,
     audio_oscillator: f32,
+    sample_queue: VecDeque<f32>,
     // For the rando instruction
     rand_hasher: DefaultHasher
 }
@@ -144,6 +146,7 @@ impl Chip8 {
             audio_buffer: 0x0000FFFF0000FFFF0000FFFF0000FFFF, // Arbitrary pattern for non-XO buzzer
             audio_frequency: 4000.0,
             audio_oscillator: 0.0,
+            sample_queue: VecDeque::new(),
             rand_hasher: RandomState::new().build_hasher()
         };
 
@@ -159,16 +162,6 @@ impl Chip8 {
         }
 
         return chip8;
-    }
-
-    #[cfg(test)]
-    pub fn run_frame(&mut self) {
-        loop {
-            self.run_inst();
-            if self.remaining == self.clock {
-                break;
-            }
-        }
     }
 }
 
@@ -697,12 +690,14 @@ impl Core for Chip8 {
 
         self.prev_op = op;
 
-        let mut sample_ready = false;
         self.audio_time += self.seconds_per_instruction;
         if self.audio_time >= self.seconds_per_output_sample {
             self.audio_time -= self.seconds_per_output_sample;
             self.audio_oscillator = (self.audio_oscillator + self.seconds_per_output_sample * self.audio_frequency) % 128.0;
-            sample_ready = true;
+            self.sample_queue.push_back(match self.r_audio {
+                0 => 0.0,
+                _ => ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
+            });
         }
 
         if self.remaining == 0 {
@@ -729,14 +724,38 @@ impl Core for Chip8 {
             }
         }
 
-        sample_ready
+        self.sample_queue.len() > 0
+    }
+
+    fn run_frame(&mut self) {
+        loop {
+            self.run_inst();
+            if self.remaining == self.clock {
+                break;
+            }
+        }
+    }
+
+    fn get_sample_queue_length(&self) -> usize {
+        self.sample_queue.len()
     }
 
     fn get_sample(&mut self) -> f32 {
-        if self.r_audio == 0 {
-            return 0.0;
+        match self.sample_queue.pop_front() {
+            Some(sample) => sample,
+            None => 0.0
         }
-        ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
+    }
+    fn peek_sample(&mut self) -> f32 {
+        if self.sample_queue.len() > 0 {
+            self.sample_queue[self.sample_queue.len() - 1]
+        } else {
+            0.0
+        }
+    }
+
+    fn is_mono(&mut self) -> bool {
+        true
     }
 
     fn press_key(&mut self, key_index: usize) {

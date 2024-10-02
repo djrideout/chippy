@@ -1,4 +1,4 @@
-use crate::frontend::Core;
+use crate::frontend::{Core, SyncModes};
 use error_iter::ErrorIter as _;
 use log::error;
 use std::sync::{Arc, Mutex};
@@ -15,15 +15,21 @@ pub struct Display<const N: usize> {
     width: usize,
     height: usize,
     keymap: [VirtualKeyCode; N],
+    sync_mode: SyncModes
 }
 
 impl<const N: usize> Display<N> {
-    pub fn new(core: Arc<Mutex<impl Core>>, width: usize, height: usize, keymap: [VirtualKeyCode; N]) -> Display<N> {
+    pub fn new(core: Arc<Mutex<impl Core>>, keymap: [VirtualKeyCode; N], sync_mode: SyncModes) -> Display<N> {
+        let core_temp = core.lock().unwrap();
+        let width = core_temp.get_width();
+        let height = core_temp.get_height();
+        drop(core_temp);
         Display {
             core,
             width,
             height,
-            keymap
+            keymap,
+            sync_mode
         }
     }
 
@@ -47,7 +53,7 @@ impl<const N: usize> Display<N> {
         {
             use wasm_bindgen::JsCast;
             use winit::platform::web::WindowExtWebSys;
-    
+
             // Retrieve current width and height dimensions of browser client window
             let get_window_size = || {
                 let client_window = web_sys::window().unwrap();
@@ -56,14 +62,14 @@ impl<const N: usize> Display<N> {
                     client_window.inner_height().unwrap().as_f64().unwrap(),
                 )
             };
-    
+
             let window = Rc::clone(&window);
-    
+
             // Initialize winit window with current dimensions of browser client
             window.set_inner_size(get_window_size());
-    
+
             let client_window = web_sys::window().unwrap();
-    
+
             // Attach winit canvas to body element
             web_sys::window()
                 .and_then(|win| win.document())
@@ -73,7 +79,7 @@ impl<const N: usize> Display<N> {
                         .ok()
                 })
                 .expect("couldn't append canvas to document body");
-    
+
             // Listen for resize event on browser client. Adjust winit window dimensions
             // on event trigger
             let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move |_e: web_sys::Event| {
@@ -85,7 +91,7 @@ impl<const N: usize> Display<N> {
                 .unwrap();
             closure.forget();
         }
-    
+
         let mut pixels = {
             let window_size = window.inner_size();
             let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, window.as_ref());
@@ -94,6 +100,7 @@ impl<const N: usize> Display<N> {
 
         let core = self.core.clone();
         let keymap = self.keymap;
+        let sync_mode = self.sync_mode;
 
         event_loop.run(move |event, _, control_flow| {
             // Draw the current frame
@@ -107,7 +114,7 @@ impl<const N: usize> Display<N> {
                     return;
                 }
             }
-    
+
             // Handle input events
             if input.update(&event) {
                 // Close events
@@ -115,7 +122,7 @@ impl<const N: usize> Display<N> {
                     *control_flow = ControlFlow::Exit;
                     return;
                 }
-    
+
                 // Resize the window
                 if let Some(size) = input.window_resized() {
                     if let Err(err) = pixels.resize_surface(size.width, size.height) {
@@ -124,7 +131,7 @@ impl<const N: usize> Display<N> {
                         return;
                     }
                 }
-    
+
                 let mut core = core.lock().unwrap();
                 // Handle key presses
                 for i in 0 .. keymap.len() {
@@ -136,9 +143,11 @@ impl<const N: usize> Display<N> {
                         core.release_key(i);
                     }
                 }
+                if sync_mode == SyncModes::VSync {
+                    core.run_frame();
+                }
                 drop(core);
-    
-                // Update internal state and request a redraw
+
                 window.request_redraw();
             }
         })

@@ -2,6 +2,7 @@ mod utils;
 mod frontend;
 mod core;
 
+use crate::frontend::SyncModes;
 use clap::Parser;
 use winit::event::VirtualKeyCode;
 
@@ -85,6 +86,6 @@ async fn run() {
         core::Chip8::new(_args.target, clock, _rom)
     };
 
-    let frontend = frontend::Frontend::new(core, KEYMAP);
+    let frontend = frontend::Frontend::new(core, KEYMAP, SyncModes::AudioCallback);
     frontend.start().await
 }

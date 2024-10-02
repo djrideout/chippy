@@ -3,6 +3,7 @@ mod utils;
 
 use pretty_assertions::assert_eq;
 use crate::core;
+use crate::frontend::Core;
 
 macro_rules! core_tests {
     ($($name:ident: $value:expr,)*) => {
