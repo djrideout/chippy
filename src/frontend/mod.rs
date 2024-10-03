@@ -47,12 +47,12 @@ impl<const N: usize> Frontend<N> {
             }
             core.get_sample()
         };
-        let audio_player = audio::AudioPlayer::new(48000, get_sample);
+        let audio_player = audio::AudioPlayer::new(get_sample);
 
         let arc_temp = arc_parent.clone();
         let mut core_temp = arc_temp.lock().unwrap();
-        core_temp.set_seconds_per_output_sample(1.0 / 48000.0);
-        core_temp.set_num_output_channels(2);
+        core_temp.set_seconds_per_output_sample(1.0 / audio_player.get_sample_rate() as f32);
+        core_temp.set_num_output_channels(audio_player.get_num_channels());
         drop(core_temp);
 
         let display = display::Display::new(arc_parent, keymap, sync_mode);
