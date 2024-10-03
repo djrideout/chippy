@@ -7,7 +7,10 @@ use winit::event::VirtualKeyCode;
 
 #[derive(PartialEq, Clone, Copy, Default, ValueEnum, Debug)]
 pub enum SyncModes {
+    // One rendering frame is one execution frame. Audio is disabled.
     VSync,
+    // Execution occurs when the audio device needs more samples.
+    // Higher buffer size means smoother audio but rougher frame rate and vice versa.
     #[default]
     AudioCallback
 }
@@ -37,19 +40,19 @@ impl<const N: usize> Frontend<N> {
         let arc_parent = Arc::new(Mutex::new(core));
         let arc_child = arc_parent.clone();
 
-        // The get_sample callback is what drives the emulation
-        // core.run_inst() will return true when enough instructions have run for a new sample to be ready
         let get_sample = move || {
             // Lock the mutex while generating samples in the audio thread
             let mut core = arc_child.lock().unwrap();
             match sync_mode {
                 SyncModes::AudioCallback => {
+                    // Run instructions until a new sample is ready and return that
                     while core.get_sample_queue_length() == 0 {
                         core.run_inst();
                     }
                     core.get_sample()
                 },
                 SyncModes::VSync => {
+                    // Audio is disabled with vsync, so just dump the samples and return 0
                     while core.get_sample_queue_length() > 0 {
                         core.get_sample();
                     }

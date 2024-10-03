@@ -21,6 +21,7 @@ struct Args {
     #[arg(short, long, default_value_t, value_enum)]
     target: core::Target,
 
+    // The method for syncing the emulation
     #[arg(short, long, default_value_t, value_enum)]
     sync: SyncModes
 }
