@@ -101,6 +101,7 @@ pub struct Chip8 {
     enabled_planes: u8, // Flags for which of the 2 planes to draw on. If the bit is set, draw on the plane.
     active_planes: [[u128; HEIGHT]; PLANE_COUNT],
     // Audio
+    num_output_channels: usize,
     seconds_per_output_sample: f32,
     seconds_per_instruction: f32,
     audio_time: f32,
@@ -140,6 +141,7 @@ impl Chip8 {
             ],
             prev_keys: [false; 16],
             curr_keys: [false; 16],
+            num_output_channels: 0, // This is set by the frontend before emulation starts
             seconds_per_output_sample: 0.0, // This is set by the frontend before emulation starts
             seconds_per_instruction: 1.0 / (FRAME_RATE * clock as f32),
             audio_time: 0.0,
@@ -172,6 +174,10 @@ impl Core for Chip8 {
 
     fn get_height(&self) -> usize {
         HEIGHT
+    }
+
+    fn set_num_output_channels(&mut self, value: usize) {
+        self.num_output_channels = value;
     }
 
     fn set_seconds_per_output_sample(&mut self, value: f32) {
@@ -694,10 +700,12 @@ impl Core for Chip8 {
         if self.audio_time >= self.seconds_per_output_sample {
             self.audio_time -= self.seconds_per_output_sample;
             self.audio_oscillator = (self.audio_oscillator + self.seconds_per_output_sample * self.audio_frequency) % 128.0;
-            self.sample_queue.push_back(match self.r_audio {
-                0 => 0.0,
-                _ => ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
-            });
+            for _i in 0..self.num_output_channels {
+                self.sample_queue.push_back(match self.r_audio {
+                    0 => 0.0,
+                    _ => ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
+                });
+            }
         }
 
         if self.remaining == 0 {
@@ -746,14 +754,8 @@ impl Core for Chip8 {
             None => 0.0
         }
     }
-    fn peek_sample(&self) -> f32 {
-        match self.sample_queue.len() {
-            0 => 0.0,
-            _ => self.sample_queue[self.sample_queue.len() - 1]
-        }
-    }
 
-    fn is_mono(&self) -> bool {
+    fn is_internal_mono(&self) -> bool {
         true
     }
 

@@ -15,10 +15,10 @@ pub trait Core: Send + 'static {
     fn get_width(&self) -> usize;
     fn get_height(&self) -> usize;
     fn get_sample_queue_length(&self) -> usize;
-    fn is_mono(&self) -> bool;
+    fn is_internal_mono(&self) -> bool;
     fn draw(&self, frame: &mut [u8]);
-    fn peek_sample(&self) -> f32;
     fn set_seconds_per_output_sample(&mut self, value: f32);
+    fn set_num_output_channels(&mut self, value: usize);
     fn press_key(&mut self, key_index: usize);
     fn release_key(&mut self, key_index: usize);
     fn run_inst(&mut self) -> bool;
@@ -42,20 +42,17 @@ impl<const N: usize> Frontend<N> {
         let get_sample = move |i: usize| {
             // Lock the mutex while generating samples in the audio thread
             let mut core = arc_child.lock().unwrap();
-            if sync_mode == SyncModes::AudioCallback && (i % 2 == 0 || !core.is_mono()) {
+            if sync_mode == SyncModes::AudioCallback && (!core.is_internal_mono() || i % 2 == 0) {
                 while !core.run_inst() {}
             }
-            if i % 2 == 0 && core.is_mono() {
-                core.peek_sample()
-            } else {
-                core.get_sample()
-            }
+            core.get_sample()
         };
         let audio_player = audio::AudioPlayer::new(48000, get_sample);
 
         let arc_temp = arc_parent.clone();
         let mut core_temp = arc_temp.lock().unwrap();
         core_temp.set_seconds_per_output_sample(1.0 / 48000.0);
+        core_temp.set_num_output_channels(2);
         drop(core_temp);
 
         let display = display::Display::new(arc_parent, keymap, sync_mode);
