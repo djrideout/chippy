@@ -1,14 +1,15 @@
 mod audio;
 mod display;
 
+use clap::ValueEnum;
 use std::sync::{Arc, Mutex};
 use winit::event::VirtualKeyCode;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Default, ValueEnum, Debug)]
 pub enum SyncModes {
     VSync,
-    AudioCallback,
-    AudioBuffer
+    #[default]
+    AudioCallback
 }
 
 pub trait Core: Send + 'static {
@@ -41,12 +42,20 @@ impl<const N: usize> Frontend<N> {
         let get_sample = move || {
             // Lock the mutex while generating samples in the audio thread
             let mut core = arc_child.lock().unwrap();
-            if sync_mode == SyncModes::AudioCallback {
-                while core.get_sample_queue_length() == 0 {
-                    core.run_inst();
+            match sync_mode {
+                SyncModes::AudioCallback => {
+                    while core.get_sample_queue_length() == 0 {
+                        core.run_inst();
+                    }
+                    core.get_sample()
+                },
+                SyncModes::VSync => {
+                    while core.get_sample_queue_length() > 0 {
+                        core.get_sample();
+                    }
+                    0.0
                 }
             }
-            core.get_sample()
         };
         let audio_player = audio::AudioPlayer::new(get_sample);
 

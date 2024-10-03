@@ -20,6 +20,9 @@ struct Args {
     // The platform you are targetting
     #[arg(short, long, default_value_t, value_enum)]
     target: core::Target,
+
+    #[arg(short, long, default_value_t, value_enum)]
+    sync: SyncModes
 }
 
 // Keymap (Assumes QWERTY for now)
@@ -86,6 +89,6 @@ async fn run() {
         core::Chip8::new(_args.target, clock, _rom)
     };
 
-    let frontend = frontend::Frontend::new(core, KEYMAP, SyncModes::AudioCallback);
+    let frontend = frontend::Frontend::new(core, KEYMAP, Args::parse().sync);
     frontend.start().await
 }
