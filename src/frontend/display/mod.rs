@@ -105,7 +105,7 @@ impl<const N: usize> Display<N> {
         event_loop.run(move |event, _, control_flow| {
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
-                let mut core = core.lock().unwrap();
+                let core = core.lock().unwrap();
                 core.draw(pixels.frame_mut());
                 drop(core);
                 if let Err(err) = pixels.render() {

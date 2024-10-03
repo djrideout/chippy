@@ -163,7 +163,7 @@ impl Chip8 {
             i += 1;
         }
 
-        return chip8;
+        chip8
     }
 }
 
@@ -184,7 +184,7 @@ impl Core for Chip8 {
         self.seconds_per_output_sample = value;
     }
 
-    fn run_inst(&mut self) -> bool {
+    fn run_inst(&mut self) {
         self.remaining -= 1;
 
         // Get opcode
@@ -731,8 +731,6 @@ impl Core for Chip8 {
                 }
             }
         }
-
-        self.sample_queue.len() > 0
     }
 
     fn run_frame(&mut self) {
@@ -753,10 +751,6 @@ impl Core for Chip8 {
             Some(sample) => sample,
             None => 0.0
         }
-    }
-
-    fn is_internal_mono(&self) -> bool {
-        true
     }
 
     fn press_key(&mut self, key_index: usize) {

@@ -15,13 +15,12 @@ pub trait Core: Send + 'static {
     fn get_width(&self) -> usize;
     fn get_height(&self) -> usize;
     fn get_sample_queue_length(&self) -> usize;
-    fn is_internal_mono(&self) -> bool;
     fn draw(&self, frame: &mut [u8]);
     fn set_seconds_per_output_sample(&mut self, value: f32);
     fn set_num_output_channels(&mut self, value: usize);
     fn press_key(&mut self, key_index: usize);
     fn release_key(&mut self, key_index: usize);
-    fn run_inst(&mut self) -> bool;
+    fn run_inst(&mut self);
     fn run_frame(&mut self);
     fn get_sample(&mut self) -> f32;
 }
@@ -39,11 +38,13 @@ impl<const N: usize> Frontend<N> {
 
         // The get_sample callback is what drives the emulation
         // core.run_inst() will return true when enough instructions have run for a new sample to be ready
-        let get_sample = move |i: usize| {
+        let get_sample = move || {
             // Lock the mutex while generating samples in the audio thread
             let mut core = arc_child.lock().unwrap();
-            if sync_mode == SyncModes::AudioCallback && (!core.is_internal_mono() || i % 2 == 0) {
-                while !core.run_inst() {}
+            if sync_mode == SyncModes::AudioCallback {
+                while core.get_sample_queue_length() == 0 {
+                    core.run_inst();
+                }
             }
             core.get_sample()
         };

@@ -86,6 +86,6 @@ async fn run() {
         core::Chip8::new(_args.target, clock, _rom)
     };
 
-    let frontend = frontend::Frontend::new(core, KEYMAP, SyncModes::VSync);
+    let frontend = frontend::Frontend::new(core, KEYMAP, SyncModes::AudioCallback);
     frontend.start().await
 }

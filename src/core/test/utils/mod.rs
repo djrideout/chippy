@@ -9,5 +9,5 @@ pub fn pretty_plane(plane: &[u128]) -> String {
           .as_str());
       output.push('\n');
   }
-  return output;
+  output
 }
