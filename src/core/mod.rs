@@ -1,5 +1,9 @@
+// Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
+
 use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
+use crate::frontend::Core;
+use std::collections::VecDeque;
 
 #[cfg(test)]
 mod test;
@@ -55,19 +59,19 @@ const BIG_FONT_SET: [u8; 160] = [
 
 // Constants
 const FRAME_RATE: f32 = 60.0;
-pub const WIDTH: usize = 128;
-pub const HEIGHT: usize = 64;
-pub const PLANE_COUNT: usize = 2;
+const WIDTH: usize = 128;
+const HEIGHT: usize = 64;
+const PLANE_COUNT: usize = 2;
 
 pub struct Chip8 {
     // Public members
     // For high-res resolution mode
-    pub high_res: bool,
+    high_res: bool,
     // Planes ready for rendering
-    pub buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
+    buffer_planes: [[u128; HEIGHT]; PLANE_COUNT],
     // Key press states
-    pub prev_keys: [bool; 16],
-    pub curr_keys: [bool; 16],
+    prev_keys: [bool; 16],
+    curr_keys: [bool; 16],
 
     // Private members
     // The target platform
@@ -97,18 +101,20 @@ pub struct Chip8 {
     enabled_planes: u8, // Flags for which of the 2 planes to draw on. If the bit is set, draw on the plane.
     active_planes: [[u128; HEIGHT]; PLANE_COUNT],
     // Audio
+    num_output_channels: usize,
     seconds_per_output_sample: f32,
     seconds_per_instruction: f32,
     audio_time: f32,
     audio_buffer: u128,
     audio_frequency: f32,
     audio_oscillator: f32,
+    sample_queue: VecDeque<f32>,
     // For the rando instruction
     rand_hasher: DefaultHasher
 }
 
 impl Chip8 {
-    pub fn new(target: Target, clock: u32, rom: Vec<u8>, output_frequency: u32) -> Chip8 {
+    pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
             clock,
@@ -135,12 +141,14 @@ impl Chip8 {
             ],
             prev_keys: [false; 16],
             curr_keys: [false; 16],
-            seconds_per_output_sample: 1.0 / output_frequency as f32,
+            num_output_channels: 0, // This is set by the frontend before emulation starts
+            seconds_per_output_sample: 0.0, // This is set by the frontend before emulation starts
             seconds_per_instruction: 1.0 / (FRAME_RATE * clock as f32),
             audio_time: 0.0,
             audio_buffer: 0x0000FFFF0000FFFF0000FFFF0000FFFF, // Arbitrary pattern for non-XO buzzer
             audio_frequency: 4000.0,
             audio_oscillator: 0.0,
+            sample_queue: VecDeque::new(),
             rand_hasher: RandomState::new().build_hasher()
         };
 
@@ -155,10 +163,28 @@ impl Chip8 {
             i += 1;
         }
 
-        return chip8;
+        chip8
+    }
+}
+
+impl Core for Chip8 {
+    fn get_width(&self) -> usize {
+        WIDTH
     }
 
-    pub fn run_inst(&mut self) -> bool {
+    fn get_height(&self) -> usize {
+        HEIGHT
+    }
+
+    fn set_num_output_channels(&mut self, value: usize) {
+        self.num_output_channels = value;
+    }
+
+    fn set_seconds_per_output_sample(&mut self, value: f32) {
+        self.seconds_per_output_sample = value;
+    }
+
+    fn run_inst(&mut self) {
         self.remaining -= 1;
 
         // Get opcode
@@ -670,12 +696,16 @@ impl Chip8 {
 
         self.prev_op = op;
 
-        let mut sample_ready = false;
         self.audio_time += self.seconds_per_instruction;
         if self.audio_time >= self.seconds_per_output_sample {
             self.audio_time -= self.seconds_per_output_sample;
             self.audio_oscillator = (self.audio_oscillator + self.seconds_per_output_sample * self.audio_frequency) % 128.0;
-            sample_ready = true;
+            for _i in 0..self.num_output_channels {
+                self.sample_queue.push_back(match self.r_audio {
+                    0 => 0.0,
+                    _ => ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
+                });
+            }
         }
 
         if self.remaining == 0 {
@@ -701,24 +731,58 @@ impl Chip8 {
                 }
             }
         }
-
-        sample_ready
     }
 
-    pub fn get_sample(&self) -> f32 {
-        if self.r_audio == 0 {
-            return 0.0;
-        }
-        ((self.audio_buffer >> self.audio_oscillator as u32) & 1) as f32
-    }
-
-    #[cfg(test)]
-    pub fn run_frame(&mut self) {
+    fn run_frame(&mut self) {
         loop {
             self.run_inst();
             if self.remaining == self.clock {
                 break;
             }
+        }
+    }
+
+    fn get_sample_queue_length(&self) -> usize {
+        self.sample_queue.len()
+    }
+
+    fn get_sample(&mut self) -> f32 {
+        match self.sample_queue.pop_front() {
+            Some(sample) => sample,
+            None => 0.0
+        }
+    }
+
+    fn press_key(&mut self, key_index: usize) {
+        self.prev_keys[key_index] = self.curr_keys[key_index];
+        self.curr_keys[key_index] = true;
+    }
+
+    fn release_key(&mut self, key_index: usize) {
+        self.prev_keys[key_index] = self.curr_keys[key_index];
+        self.curr_keys[key_index] = false;
+    }
+
+    fn draw(&self, frame: &mut [u8]) {
+        for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
+            let x = WIDTH - 1 - (i % WIDTH >> !self.high_res as u8);
+            let y = i / WIDTH >> !self.high_res as u8;
+    
+            let _both = self.buffer_planes[0][y] & self.buffer_planes[1][y];
+            let _zero = self.buffer_planes[0][y] & !_both;
+            let _one = self.buffer_planes[1][y] & !_both;
+    
+            let rgba = if _both & (1 << x) > 0 {
+                [0x99, 0x66, 0x00, 0xff]
+            } else if _zero & (1 << x) > 0 {
+                [0xff, 0xcc, 0x00, 0xff]
+            } else if _one & (1 << x) > 0 {
+                [0xff, 0x66, 0x00, 0xff]
+            } else {
+                [0x66, 0x22, 0x00, 0xff]
+            };
+    
+            pixel.copy_from_slice(&rgba);
         }
     }
 }
