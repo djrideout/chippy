@@ -1,10 +1,8 @@
 mod utils;
-mod frontend;
 mod core;
 
-use crate::frontend::SyncModes;
+use basic_emu_frontend::{SyncModes, Frontend, VirtualKeyCode};
 use clap::Parser;
-use winit::event::VirtualKeyCode;
 
 // Command line arguments
 #[derive(Parser, Debug)]
@@ -95,6 +93,6 @@ async fn run() {
     #[cfg(not(target_arch = "wasm32"))]
     let sync_mode = Args::parse().sync;
 
-    let frontend = frontend::Frontend::new(core, KEYMAP, sync_mode);
+    let frontend = Frontend::new(core, KEYMAP, sync_mode);
     frontend.start().await
 }
