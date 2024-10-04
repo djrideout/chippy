@@ -1,10 +1,8 @@
 mod utils;
-mod frontend;
 mod core;
 
-use crate::frontend::SyncModes;
+use basic_emu_frontend::{SyncModes, Frontend, VirtualKeyCode, block_on};
 use clap::Parser;
-use winit::event::VirtualKeyCode;
 
 // Command line arguments
 #[derive(Parser, Debug)]
@@ -52,16 +50,7 @@ const KEYMAP: [VirtualKeyCode; 16] = [
 ];
 
 fn main() {
-    #[cfg(target_arch = "wasm32")]
-    {
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init_with_level(log::Level::Trace).expect("error initializing logger");
-        wasm_bindgen_futures::spawn_local(run());
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        pollster::block_on(run());
-    }
+    block_on(run());
 }
 
 async fn run() {
@@ -80,11 +69,11 @@ async fn run() {
         let _rom = utils::load_rom(&_args.input);
         let mut clock = _args.clock;
         if clock == 0 {
-            match _args.target {
-                core::Target::Chip => clock = 11,
-                core::Target::SuperModern => clock = 30,
-                core::Target::SuperLegacy => clock = 30,
-                core::Target::XO => clock = 1000
+            clock = match _args.target {
+                core::Target::Chip => 11,
+                core::Target::SuperModern => 30,
+                core::Target::SuperLegacy => 30,
+                core::Target::XO => 1000
             }
         }
         core::Chip8::new(_args.target, clock, _rom)
@@ -95,6 +84,6 @@ async fn run() {
     #[cfg(not(target_arch = "wasm32"))]
     let sync_mode = Args::parse().sync;
 
-    let frontend = frontend::Frontend::new(core, KEYMAP, sync_mode);
+    let frontend = Frontend::new(core, KEYMAP, sync_mode);
     frontend.start().await
 }

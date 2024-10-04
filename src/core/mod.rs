@@ -2,7 +2,7 @@
 
 use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
-use crate::frontend::Core;
+use basic_emu_frontend::Core;
 use std::collections::VecDeque;
 
 #[cfg(test)]
