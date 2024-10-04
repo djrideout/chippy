@@ -90,6 +90,11 @@ async fn run() {
         core::Chip8::new(_args.target, clock, _rom)
     };
 
-    let frontend = frontend::Frontend::new(core, KEYMAP, Args::parse().sync);
+    #[cfg(target_arch = "wasm32")]
+    let sync_mode = SyncModes::AudioCallback;
+    #[cfg(not(target_arch = "wasm32"))]
+    let sync_mode = Args::parse().sync;
+
+    let frontend = frontend::Frontend::new(core, KEYMAP, sync_mode);
     frontend.start().await
 }
