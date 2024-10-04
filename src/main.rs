@@ -80,11 +80,11 @@ async fn run() {
         let _rom = utils::load_rom(&_args.input);
         let mut clock = _args.clock;
         if clock == 0 {
-            match _args.target {
-                core::Target::Chip => clock = 11,
-                core::Target::SuperModern => clock = 30,
-                core::Target::SuperLegacy => clock = 30,
-                core::Target::XO => clock = 1000
+            clock = match _args.target {
+                core::Target::Chip => 11,
+                core::Target::SuperModern => 30,
+                core::Target::SuperLegacy => 30,
+                core::Target::XO => 1000
             }
         }
         core::Chip8::new(_args.target, clock, _rom)
