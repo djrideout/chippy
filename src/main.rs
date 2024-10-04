@@ -1,7 +1,7 @@
 mod utils;
 mod core;
 
-use basic_emu_frontend::{SyncModes, Frontend, VirtualKeyCode};
+use basic_emu_frontend::{SyncModes, Frontend, VirtualKeyCode, block_on};
 use clap::Parser;
 
 // Command line arguments
@@ -50,16 +50,7 @@ const KEYMAP: [VirtualKeyCode; 16] = [
 ];
 
 fn main() {
-    #[cfg(target_arch = "wasm32")]
-    {
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init_with_level(log::Level::Trace).expect("error initializing logger");
-        wasm_bindgen_futures::spawn_local(run());
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        pollster::block_on(run());
-    }
+    block_on(run());
 }
 
 async fn run() {

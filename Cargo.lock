@@ -229,11 +229,15 @@ name = "basic-emu-frontend"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "console_error_panic_hook",
+ "console_log",
  "cpal",
  "error-iter",
  "log",
  "pixels",
+ "pollster",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "winit",
  "winit_input_helper",
@@ -397,12 +401,7 @@ version = "0.1.0"
 dependencies = [
  "basic-emu-frontend",
  "clap",
- "console_error_panic_hook",
- "console_log",
- "log",
- "pollster",
  "pretty_assertions",
- "wasm-bindgen-futures",
 ]
 
 [[package]]

@@ -8,15 +8,6 @@ clap = { version = "4.5.16", features = ["derive"] }
 pretty_assertions = "1.4.0"
 basic-emu-frontend = { version = "0.1.0", path = "../basic-emu-frontend" }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1"
-console_log = "1"
-wasm-bindgen-futures = "0.4"
-log = "0.4"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-pollster = "0.3"
-
 [workspace]
 members = [
     "run-wasm",
