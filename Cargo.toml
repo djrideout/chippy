@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.16", features = ["derive"] }
 pretty_assertions = "1.4.0"
-basic-emu-frontend = { version = "0.1.0", path = "../basic-emu-frontend" }
+basic_emu_frontend = { git = "https://github.com/djrideout/basic-emu-frontend.git" }
 
 [workspace]
 members = [
