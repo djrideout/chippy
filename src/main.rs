@@ -1,7 +1,7 @@
 mod utils;
 mod core;
 
-use basic_emu_frontend::{SyncModes, Frontend, VirtualKeyCode, block_on};
+use basic_emu_frontend::{SyncModes, Frontend, keymap::Keymap, VirtualKeyCode, block_on};
 use clap::Parser;
 
 // Command line arguments
@@ -84,6 +84,6 @@ async fn run() {
     #[cfg(not(target_arch = "wasm32"))]
     let sync_mode = Args::parse().sync;
 
-    let frontend = Frontend::new(core, Vec::from(KEYMAP), sync_mode);
+    let frontend = Frontend::new(core, Keymap::new(&KEYMAP), sync_mode);
     frontend.start().await
 }
