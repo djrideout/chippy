@@ -84,6 +84,6 @@ async fn run() {
     #[cfg(not(target_arch = "wasm32"))]
     let sync_mode = Args::parse().sync;
 
-    let frontend = Frontend::new(core, KEYMAP, sync_mode);
+    let frontend = Frontend::new(core, Vec::from(KEYMAP), sync_mode);
     frontend.start().await
 }
