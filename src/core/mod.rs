@@ -1,13 +1,15 @@
 // Based mainly on the docs at http://devernay.free.fr/hacks/chip8/C8TECH10.HTM and https://chip8.gulrak.net/
 
+use wasm_bindgen::prelude::*;
 use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
-use basic_emu_frontend::Core;
+use basic_emu_frontend::{Core, Frontend, keymap::Keymap, SyncModes, rom::ROM};
 use std::collections::VecDeque;
 
 #[cfg(test)]
 mod test;
 
+#[wasm_bindgen]
 #[derive(ValueEnum, Debug, Clone, Default, PartialEq)]
 pub enum Target {
     Chip, // This is "chip-8" in Gulrak's opcode table
@@ -63,6 +65,7 @@ const WIDTH: usize = 128;
 const HEIGHT: usize = 64;
 const PLANE_COUNT: usize = 2;
 
+#[wasm_bindgen]
 pub struct Chip8 {
     // Public members
     // For high-res resolution mode
@@ -113,8 +116,10 @@ pub struct Chip8 {
     rand_hasher: DefaultHasher
 }
 
+#[wasm_bindgen]
 impl Chip8 {
-    pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
+    #[wasm_bindgen(constructor)]
+    pub fn new(target: Target, clock: u32, rom: ROM) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
             clock,
@@ -158,7 +163,7 @@ impl Chip8 {
 
         // Load ROM into memory
         let mut i = 0x200; // ROM starts at 0x200 in memory
-        for byte in rom.into_iter() {
+        for byte in rom.get_rom().into_iter() {
             chip8.mem[i] = byte;
             i += 1;
         }
@@ -785,4 +790,10 @@ impl Core for Chip8 {
             pixel.copy_from_slice(&rgba);
         }
     }
+}
+
+// wasm_bindgen can't handle generics, so wrap the Frontend constructor to make it concrete
+#[wasm_bindgen]
+pub fn create_frontend(core: Chip8, keymap: Keymap, sync_mode: SyncModes) -> Frontend {
+    Frontend::new(core, keymap, sync_mode)
 }
