@@ -3,7 +3,7 @@
 use wasm_bindgen::prelude::*;
 use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
-use basic_emu_frontend::{Core, Frontend, keymap::Keymap, SyncModes, rom::ROM};
+use basic_emu_frontend::{Core, Frontend, keymap::Keymap, SyncModes};
 use std::collections::VecDeque;
 
 #[cfg(test)]
@@ -119,7 +119,7 @@ pub struct Chip8 {
 #[wasm_bindgen]
 impl Chip8 {
     #[wasm_bindgen(constructor)]
-    pub fn new(target: Target, clock: u32, rom: ROM) -> Chip8 {
+    pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
             clock,
@@ -163,7 +163,7 @@ impl Chip8 {
 
         // Load ROM into memory
         let mut i = 0x200; // ROM starts at 0x200 in memory
-        for byte in rom.get_rom().into_iter() {
+        for byte in rom.into_iter() {
             chip8.mem[i] = byte;
             i += 1;
         }

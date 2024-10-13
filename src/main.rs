@@ -1,7 +1,7 @@
 mod utils;
 mod core;
 
-use basic_emu_frontend::{SyncModes, keymap::Keymap, VirtualKeyCode, rom::ROM, block_on};
+use basic_emu_frontend::{SyncModes, keymap::Keymap, VirtualKeyCode, block_on};
 use clap::Parser;
 
 // Command line arguments
@@ -60,13 +60,13 @@ async fn run() {
         let _rom = include_bytes!("../nyancat.ch8").to_vec();
         let clock = 20000;
         let target = core::Target::XO;
-        core::Chip8::new(target, clock, ROM::new(_rom))
+        core::Chip8::new(target, clock, _rom)
     };
 
     #[cfg(not(target_arch = "wasm32"))]
     let core = {
         let _args = Args::parse();
-        let _rom = ROM::new(utils::load_rom(&_args.input));
+        let _rom = utils::load_rom(&_args.input);
         let mut clock = _args.clock;
         if clock == 0 {
             clock = match _args.target {
