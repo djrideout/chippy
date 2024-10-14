@@ -1,7 +1,7 @@
 [package]
-name = "run-wasm"
+name = "wbg"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cargo-run-wasm = "0.3"
+wasm-bindgen-cli-support = "0.2.95"

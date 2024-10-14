@@ -10,9 +10,7 @@ basic_emu_frontend = { git = "https://github.com/djrideout/basic-emu-frontend.gi
 wasm-bindgen = "0.2"
 
 [workspace]
-members = [
-    "run-wasm",
-]
+members = ["web/wbg"]
 
 [[bin]]
 name = "chippy"

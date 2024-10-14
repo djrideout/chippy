@@ -50,20 +50,12 @@ const KEYMAP: [VirtualKeyCode; 16] = [
 ];
 
 fn main() {
+    // In the browser, create and run the core/frontend from the JS side.
+    #[cfg(not(target_arch = "wasm32"))]
     block_on(run());
 }
 
 async fn run() {
-    // Browser arguments are hardcoded for now until I create a more flexible web view
-    #[cfg(target_arch = "wasm32")]
-    let core = {
-        let _rom = include_bytes!("../nyancat.ch8").to_vec();
-        let clock = 20000;
-        let target = core::Target::XO;
-        core::Chip8::new(target, clock, _rom)
-    };
-
-    #[cfg(not(target_arch = "wasm32"))]
     let core = {
         let _args = Args::parse();
         let _rom = utils::load_rom(&_args.input);
