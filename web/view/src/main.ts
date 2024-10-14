@@ -1,28 +1,42 @@
 import './style.less';
-import typescriptLogo from './typescript.svg';
-import viteLogo from '/vite.svg';
-import init, { Chip8, Frontend, SyncModes, Target, Keymap } from '../wasm/chippy';
+import init, { Chip8, SyncModes, Target, Keymap, create_frontend } from '../wasm/chippy';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`;
+await init();
 
-window.addEventListener('load', () => {
-  init();
-  console.log(Chip8);
-  console.log(Frontend);
-  console.log(SyncModes);
-  console.log(Target);
-  console.log(Keymap);
+let rom = new Uint8Array(await (await fetch('nyancat.ch8')).arrayBuffer());
+
+let chip8 = new Chip8(Target.XO, 30000, rom);
+
+let emuDiv = document.querySelector<HTMLDivElement>("#emulator");
+if (emuDiv) {
+    emuDiv.style.width = `${chip8.get_width() * 5}px`;
+    emuDiv.style.height = `${chip8.get_height() * 5}px`;
+    emuDiv.style.display = 'block';
+}
+
+let keymap = new Keymap([
+    'X',
+    'Key1',
+    'Key2',
+    'Key3',
+    'Q',
+    'W',
+    'E',
+    'A',
+    'S',
+    'D',
+    'Z',
+    'C',
+    'Key4',
+    'R',
+    'F',
+    'V'
+]);
+
+let frontend = create_frontend(chip8, keymap, SyncModes.AudioCallback);
+
+let overlay = document.querySelector('#emulator-overlay');
+overlay?.addEventListener('click', () => {
+    overlay.remove();
+    frontend.start();
 });

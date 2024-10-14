@@ -221,7 +221,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 [[package]]
 name = "basic_emu_frontend"
 version = "0.1.0"
-source = "git+https://github.com/djrideout/basic-emu-frontend.git#0af518636206fcb072d9281e3587680b41eb8670"
+source = "git+https://github.com/djrideout/basic-emu-frontend.git#1f670242f1a5793331494ecbc8ae932685ec50a1"
 dependencies = [
  "clap",
  "console_error_panic_hook",
@@ -1545,9 +1545,9 @@ dependencies = [
 
 [[package]]
 name = "profiling"
-version = "1.0.15"
+version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43d84d1d7a6ac92673717f9f6d1518374ef257669c24ebc5ac25d5033828be58"
+checksum = "afbdc74edc00b6f6a218ca6a5364d6226a259d4b8ea1af4a0ea063f27e179f4d"
 
 [[package]]
 name = "quote"

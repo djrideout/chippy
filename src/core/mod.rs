@@ -170,15 +170,25 @@ impl Chip8 {
 
         chip8
     }
+
+    #[wasm_bindgen]
+    pub fn get_width(&self) -> usize {
+        WIDTH
+    }
+
+    #[wasm_bindgen]
+    pub fn get_height(&self) -> usize {
+        HEIGHT
+    }
 }
 
 impl Core for Chip8 {
     fn get_width(&self) -> usize {
-        WIDTH
+        self.get_width()
     }
 
     fn get_height(&self) -> usize {
-        HEIGHT
+        self.get_height()
     }
 
     fn set_num_output_channels(&mut self, value: usize) {
