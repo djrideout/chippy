@@ -14,8 +14,10 @@ if (emuContainer) {
 }
 
 const emuOverlay = emuContainer?.querySelector('#emulator-overlay');
+const emuDiv = emuContainer?.querySelector<HTMLDivElement>('#emulator');
 emuOverlay?.addEventListener('click', () => {
     emuOverlay.remove();
+    if (emuDiv) emuDiv.style.display = 'block';
     frontend.start();
 });
 
