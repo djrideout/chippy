@@ -221,7 +221,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 [[package]]
 name = "basic_emu_frontend"
 version = "0.1.0"
-source = "git+https://github.com/djrideout/basic-emu-frontend.git#1f670242f1a5793331494ecbc8ae932685ec50a1"
+source = "git+https://github.com/djrideout/basic-emu-frontend.git#4c0a8566f3e59103ae5eadb8c8a5a2c1e5aabd5f"
 dependencies = [
  "clap",
  "console_error_panic_hook",

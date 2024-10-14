@@ -71,9 +71,6 @@ async fn run() {
         core::Chip8::new(_args.target, clock, _rom)
     };
 
-    #[cfg(target_arch = "wasm32")]
-    let sync_mode = SyncModes::AudioCallback;
-    #[cfg(not(target_arch = "wasm32"))]
     let sync_mode = Args::parse().sync;
 
     let frontend = core::create_frontend(core, Keymap::new(&KEYMAP), sync_mode);
