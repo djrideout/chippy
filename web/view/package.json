@@ -1,0 +1,19 @@
+{
+  "name": "chippy-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:full": "cargo run --package wbg && vite",
+    "build": "vite build",
+    "build:wasm": "cargo run --package wbg",
+    "build:full": "cargo run --package wbg && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "less": "^4.2.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.8"
+  }
+}
