@@ -763,7 +763,7 @@ impl Core for Chip8 {
 
     fn get_sample(&mut self) -> f32 {
         match self.sample_queue.pop_front() {
-            Some(sample) => sample,
+            Some(sample) => sample * 0.15,
             None => 0.0
         }
     }
