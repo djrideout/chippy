@@ -17,18 +17,37 @@ CHIP-8 interpreter written in Rust. Targets CHIP-8, SUPER-CHIP (Modern), SUPER-C
 
 # Build requirements
 - [Rust/Cargo](https://www.rust-lang.org/tools/install)
+- [Node.js if building for web](https://nodejs.org/en)
 
-# Run interpreter
+# Run interpreter (native)
 `cargo run -- <options>`
 
-# Run test suite
-`cargo test`
+# Run interpreter (web)
+```
+cd web/view
+npm install
+npm run dev:full
+```
 
-# Build & run (release)
+To rebuild wasm only:
+`npm run build:wasm`
+
+# Build & run (release, native)
 ```
 cargo build --release
 ./target/release/chippy.exe <options>
 ```
+
+# Build & run (release, web)
+```
+cd web/view
+npm install
+npm run build:full
+npm run preview
+```
+
+# Run test suite
+`cargo test`
 
 # Debugging in VSCode
 There is a VSCode launch config for debugging using LLDB in `.vscode/launch.json`.
