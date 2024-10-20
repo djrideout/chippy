@@ -1,8 +1,18 @@
-import { Chip8, SyncModes, Target, Keymap, create_frontend } from '../wasm/chippy';
+import { Chip8, SyncModes, Target, Keymap, create_frontend, press_key, release_key } from '../wasm/chippy';
 import { setWasmImports } from './utils';
 
 const keyElements = [...document.querySelectorAll<HTMLDivElement>('.keypad-key')]
     .sort((a, b) => Number.parseInt(`0x${a.innerText}`, 16) - Number.parseInt(`0x${b.innerText}`, 16));
+
+for (let keyEl of keyElements) {
+    let keyCode = keyEl.getAttribute('key');
+    keyEl.addEventListener('mousedown', () => press_key(keyCode));
+    keyEl.addEventListener('touchstart', () => press_key(keyCode));
+    keyEl.addEventListener('mouseup', () => release_key(keyCode));
+    keyEl.addEventListener('mouseleave', () => release_key(keyCode));
+    keyEl.addEventListener('touchend', () => release_key(keyCode));
+    keyEl.addEventListener('touchcancel', () => release_key(keyCode));
+}
 
 const keys = keyElements.map((el) => el.getAttribute('key'));
 
