@@ -6,15 +6,15 @@ await init();
 
 const { frontend, width, height } = await setupFrontend();
 
-const emuContainer = document.querySelector<HTMLDivElement>('#emulator-container');
-if (emuContainer) {
-    emuContainer.style.width = `${width * 5}px`;
-    emuContainer.style.height = `${height * 5}px`;
-    emuContainer.style.display = 'block';
+let emuWrapper = document.querySelector<HTMLDivElement>("#emulator-wrapper");
+let emuDiv = emuWrapper?.querySelector<HTMLDivElement>('#emulator');
+if (emuWrapper) {
+    emuWrapper.style.width = `${width * 4}px`;
+    //emuDiv.style.height = `${height * 4}px`;
+    emuDiv && (emuDiv.style.display = 'block');
 }
 
-const emuOverlay = emuContainer?.querySelector('#emulator-overlay');
-const emuDiv = emuContainer?.querySelector<HTMLDivElement>('#emulator');
+const emuOverlay = emuWrapper?.querySelector('#emulator-overlay');
 emuOverlay?.addEventListener('click', () => {
     emuOverlay.remove();
     if (emuDiv) emuDiv.style.display = 'block';

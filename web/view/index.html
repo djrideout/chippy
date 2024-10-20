@@ -7,9 +7,18 @@
         <title>chippy - CHIP-8 Interpreter</title>
     </head>
     <body>
-        <div id="emulator-container">
-            <div id="emulator-overlay">
-                Click/tap to start
+        <div id="emulator-wrapper">
+            <div id="emulator">
+                <div id="emulator-overlay">
+                    Click to start
+                </div>
+            </div>
+            <div id="emulator-controls">
+                <div id="emulator-tabs">
+                    <span class="emulator-tab keypad">Keypad</span>
+                    <span class="emulator-tab settings">Settings</span>
+                </div>
+                <div id="emulator-control-content"></div>
             </div>
             <div id="emulator"></div>
         </div>
