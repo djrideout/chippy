@@ -778,6 +778,10 @@ impl Core for Chip8 {
         self.curr_keys[key_index] = false;
     }
 
+    fn get_key_pressed(&self, key_index: usize) -> bool {
+        self.curr_keys[key_index]
+    }
+
     fn draw(&self, frame: &mut [u8]) {
         for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
             let x = WIDTH - 1 - (i % WIDTH >> !self.high_res as u8);
