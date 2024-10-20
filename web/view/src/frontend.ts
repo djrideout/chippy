@@ -2,12 +2,7 @@ import { Chip8, SyncModes, Target, Keymap, create_frontend } from '../wasm/chipp
 
 export async function setupFrontend() {
     const rom = new Uint8Array(await (await fetch('nyancat.ch8')).arrayBuffer());
-
     const chip8 = new Chip8(Target.XO, 30000, rom);
-
-    const width = chip8.get_width();
-    const height = chip8.get_height();
-
     const keymap = new Keymap([
         'X',
         'Key1',
@@ -26,12 +21,7 @@ export async function setupFrontend() {
         'F',
         'V'
     ]);
-
-    return {
-        frontend: create_frontend(chip8, keymap, SyncModes.AudioCallback),
-        width,
-        height
-    };
+    return create_frontend(chip8, keymap, SyncModes.AudioCallback);
 };
 
 export async function waitForCanvas() {
