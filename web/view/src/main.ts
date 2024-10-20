@@ -1,3 +1,9 @@
+declare global {
+    interface Window {
+        wasm_imports: Record<string, Function>;
+    }
+}
+
 import './style.less';
 import init from '../wasm/chippy';
 import { setupFrontend, waitForCanvas } from './frontend';
