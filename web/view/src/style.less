@@ -3,6 +3,7 @@
 @overlay-background: #662200;
 @controls-background: #4e1913;
 @key-pressed: #2b1707;
+@aspect-ratio: 4 / 5;
 
 :root {
     width: 100%;
@@ -20,9 +21,8 @@
         #emulator-wrapper {
             display: flex;
             flex-direction: column;
-            aspect-ratio: 4 / 5;
-            flex: 1;
-            max-height: 100%;
+            aspect-ratio: @aspect-ratio;
+            height: 100%;
             #emulator {
                 display: none;
                 #emulator-overlay {
@@ -80,5 +80,12 @@
                 }
             }
         }
+    }
+}
+
+@media (aspect-ratio < @aspect-ratio) {
+    #emulator-wrapper {
+        height: unset !important;
+        width: 100%;
     }
 }
