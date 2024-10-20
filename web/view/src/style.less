@@ -22,6 +22,10 @@
             flex-direction: column;
             aspect-ratio: @aspect-ratio;
             height: 100%;
+            @media (aspect-ratio < @aspect-ratio) {
+                height: unset !important;
+                width: 100%;
+            }
             #emulator {
                 #emulator-overlay {
                     aspect-ratio: 2 / 1;
@@ -76,12 +80,5 @@
                 }
             }
         }
-    }
-}
-
-@media (aspect-ratio < @aspect-ratio) {
-    #emulator-wrapper {
-        height: unset !important;
-        width: 100%;
     }
 }
