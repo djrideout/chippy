@@ -1,3 +1,9 @@
+@font: #ff9e24;
+@background: #612b0a;
+@overlay-background: #662200;
+@controls-background: #4e1913;
+@key-pressed: #2b1707;
+
 :root {
     width: 100%;
     height: 100%;
@@ -5,10 +11,13 @@
         margin: 0;
         width: 100%;
         height: 100%;
-        color: #ff9e24;
-        background: #612b0a;
+        color: @font;
+        background: @background;
         font-family: Lato, sans-serif;
         #emulator-wrapper {
+            display: flex;
+            flex-direction: column;
+            aspect-ratio: 4 / 5;
             #emulator {
                 display: none;
                 width: inherit;
@@ -16,20 +25,54 @@
                     aspect-ratio: 2 / 1;
                     cursor: pointer;
                     font-size: 32px;
-                    background-color: #662200;
+                    background: @overlay-background;
                     text-align: center;
                     align-content: center;
                 }
                 canvas {
                     display: block;
+                    outline: 0;
                     image-rendering: pixelated;
                     width: inherit !important;
                     height: inherit !important;
                 }
             }
             #emulator-controls {
-                .emulator-tab {
-                    background: #4e1913;
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+                #emulator-tabs {
+                    display: flex;
+                    .emulator-tab {
+                        cursor: pointer;
+                        padding: 5px 10px;
+                        background: @background;
+                        &.selected {
+                            background: @controls-background;
+                        }
+                    }
+                }
+                #emulator-control-content {
+                    flex-grow: 1;
+                    background: @controls-background;
+                    #emulator-keypad {
+                        cursor: pointer;
+                        height: 100%;
+                        display: grid;
+                        grid-template-columns: 25% 25% 25% 25%;
+                        font-size: 25px;
+                        box-shadow: inset 0px 0px 0px 2px @key-pressed;
+                        .keypad-key {
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            text-align: center;
+                            box-shadow: inset 0px 0px 0px 1px @key-pressed;
+                        }
+                    }
+                    #emulator-settings {
+                        display: none;
+                    }
                 }
             }
         }
