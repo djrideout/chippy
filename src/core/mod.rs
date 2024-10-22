@@ -5,6 +5,7 @@ use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
 use basic_emu_frontend::{Core, Frontend, keymap::Keymap, SyncModes};
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
 #[cfg(test)]
 mod test;
@@ -65,7 +66,6 @@ const WIDTH: usize = 128;
 const HEIGHT: usize = 64;
 const PLANE_COUNT: usize = 2;
 
-#[wasm_bindgen]
 pub struct Chip8 {
     // Public members
     // For high-res resolution mode
@@ -116,9 +116,7 @@ pub struct Chip8 {
     rand_hasher: DefaultHasher
 }
 
-#[wasm_bindgen]
 impl Chip8 {
-    #[wasm_bindgen(constructor)]
     pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
@@ -170,25 +168,15 @@ impl Chip8 {
 
         chip8
     }
-
-    #[wasm_bindgen]
-    pub fn get_width(&self) -> usize {
-        WIDTH
-    }
-
-    #[wasm_bindgen]
-    pub fn get_height(&self) -> usize {
-        HEIGHT
-    }
 }
 
 impl Core for Chip8 {
     fn get_width(&self) -> usize {
-        self.get_width()
+        WIDTH
     }
 
     fn get_height(&self) -> usize {
-        self.get_height()
+        HEIGHT
     }
 
     fn set_num_output_channels(&mut self, value: usize) {
@@ -806,8 +794,27 @@ impl Core for Chip8 {
     }
 }
 
-// wasm_bindgen can't handle generics, so wrap the Frontend constructor to make it concrete
 #[wasm_bindgen]
-pub fn create_frontend(core: Chip8, keymap: Keymap, sync_mode: SyncModes) -> Frontend {
-    Frontend::new(core, keymap, sync_mode)
+struct JsApi {
+    frontend: Frontend,
+    core: Arc<Mutex<Chip8>>
+}
+
+// A thread-safe wrapper around the Chip8 struct to interact with it from JS
+#[wasm_bindgen]
+impl JsApi {
+    #[wasm_bindgen(constructor)]
+    pub fn new(target: Target, clock: u32, rom: Vec<u8>, keymap: Keymap, sync_mode: SyncModes) -> JsApi {
+        let core = Chip8::new(target, clock, rom);
+        let arc = Arc::new(Mutex::new(core));
+        JsApi {
+            frontend: Frontend::new(arc.clone(), keymap, sync_mode),
+            core: arc
+        }
+    }
+
+    #[wasm_bindgen]
+    pub async fn start(&self) {
+        self.frontend.start().await
+    }
 }

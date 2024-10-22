@@ -6,16 +6,16 @@ declare global {
 
 import './style.less';
 import init from '../wasm/chippy';
-import { setupFrontend, waitForCanvas } from './frontend';
+import { initAPI, waitForCanvas } from './frontend';
 
 await init();
 
-const frontend = await setupFrontend();
+let api = await initAPI();
 
 const emuOverlay = document.querySelector('#emulator-overlay');
 emuOverlay?.addEventListener('click', () => {
     emuOverlay.remove();
-    frontend.start();
+    api.start();
 });
 
 const canvas = await waitForCanvas();

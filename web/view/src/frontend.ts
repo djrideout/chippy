@@ -1,4 +1,11 @@
-import { Chip8, SyncModes, Target, Keymap, create_frontend, press_key, release_key } from '../wasm/chippy';
+import {
+    JsApi,
+    SyncModes,
+    Target,
+    Keymap,
+    press_key,
+    release_key,
+} from '../wasm/chippy';
 import { setWasmImports } from './utils';
 
 const keyElements = [...document.querySelectorAll<HTMLDivElement>('.keypad-key')]
@@ -6,12 +13,10 @@ const keyElements = [...document.querySelectorAll<HTMLDivElement>('.keypad-key')
 
 for (let keyEl of keyElements) {
     let keyCode = keyEl.getAttribute('key');
-    keyEl.addEventListener('mousedown', () => press_key(keyCode));
-    keyEl.addEventListener('touchstart', () => press_key(keyCode));
-    keyEl.addEventListener('mouseup', () => release_key(keyCode));
-    keyEl.addEventListener('mouseleave', () => release_key(keyCode));
-    keyEl.addEventListener('touchend', () => release_key(keyCode));
-    keyEl.addEventListener('touchcancel', () => release_key(keyCode));
+    const pressEvents = ['mousedown', 'touchstart'];
+    const releaseEvents = ['mouseup', 'mouseleave', 'touchend', 'touchcancel'];
+    pressEvents.forEach((event) => keyEl.addEventListener(event, () => press_key(keyCode)));
+    releaseEvents.forEach((event) => keyEl.addEventListener(event, () => release_key(keyCode)));
 }
 
 const keys = keyElements.map((el) => el.getAttribute('key'));
@@ -21,11 +26,13 @@ setWasmImports({
     on_key_released: (i: number) => keyElements[i].classList.remove('pressed')
 });
 
-export async function setupFrontend() {
-    const rom = new Uint8Array(await (await fetch('nyancat.ch8')).arrayBuffer());
-    const chip8 = new Chip8(Target.XO, 30000, rom);
-    const keymap = new Keymap(keys);
-    return create_frontend(chip8, keymap, SyncModes.AudioCallback);
+export async function initAPI(
+    romUrl = 'nyancat.ch8',
+    target = Target.XO,
+    clock = 30000
+) {
+    const rom = new Uint8Array(await (await fetch(romUrl)).arrayBuffer());
+    return new JsApi(target, clock, rom, new Keymap(keys), SyncModes.AudioCallback);
 };
 
 export async function waitForCanvas() {
