@@ -61,26 +61,30 @@
                 #emulator-control-content {
                     flex-grow: 1;
                     background: @controls-background;
-                    #emulator-keypad {
-                        -webkit-tap-highlight-color: transparent;
-                        user-select: none;
-                        cursor: pointer;
-                        height: 100%;
-                        display: grid;
-                        grid-template-columns: 25% 25% 25% 25%;
-                        font-size: 25px;
+                    .emulator-content {
                         box-shadow: inset 0px 0px 0px 2px @key-pressed;
-                        .keypad-key {
-                            text-align: center;
-                            align-content: center;
-                            box-shadow: inset 0px 0px 0px 1px @key-pressed;
-                            &.pressed {
-                                background: @key-pressed;
+                        height: 100%;
+                        &.keypad {
+                            -webkit-tap-highlight-color: transparent;
+                            user-select: none;
+                            cursor: pointer;
+                            display: grid;
+                            grid-template-columns: 25% 25% 25% 25%;
+                            font-size: 25px;
+                            .keypad-key {
+                                text-align: center;
+                                align-content: center;
+                                box-shadow: inset 0px 0px 0px 1px @key-pressed;
+                                &.pressed {
+                                    background: @key-pressed;
+                                }
                             }
                         }
-                    }
-                    #emulator-settings {
-                        display: none;
+                        &.settings {
+                            #rom-file-input {
+                                display: none;
+                            }
+                        }
                     }
                 }
             }

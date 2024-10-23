@@ -5,19 +5,9 @@ declare global {
 }
 
 import './style.less';
-import init from '../wasm/chippy';
-import { initAPI, waitForCanvas } from './frontend';
+import initWasm from '../wasm/chippy';
+import { setupUI, waitForCanvas } from './frontend';
 
-await init();
-
-let api = await initAPI();
-
-const emuOverlay = document.querySelector('#emulator-overlay');
-emuOverlay?.addEventListener('click', () => {
-    emuOverlay.remove();
-    api.start();
-});
-
-const canvas = await waitForCanvas();
-
-canvas.focus();
+await initWasm();
+await setupUI();
+(await waitForCanvas()).focus();

@@ -74,6 +74,11 @@ async fn run() {
 
     let sync_mode = Args::parse().sync;
 
-    let frontend = Frontend::new(Arc::new(Mutex::new(core)), Keymap::new(&KEYMAP), sync_mode);
+    let frontend = Frontend::new(
+        Arc::new(Mutex::new(core)),
+        Keymap::new(&KEYMAP),
+        sync_mode
+    );
+
     frontend.start().await
 }
