@@ -725,7 +725,7 @@ impl Core for Chip8 {
                                     row_i %= _y_mod;
                                 }
                                 // plane_offset will be non-negative at this point, so casting to usize is fine
-                                let _base_addr = (sprite_width >> 3) * plane_offset as usize * sprite_height + self.r_i + i;
+                                let _base_addr = (sprite_width >> 3) * (i + plane_offset as usize * sprite_height) + self.r_i;
                                 let mut sprite_row = self.mem[_base_addr] as u128;
                                 if sprite_width == 16 {
                                     sprite_row = (sprite_row << 8) | self.mem[_base_addr + 1] as u128;
