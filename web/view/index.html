@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+        <link rel="icon" type="image/svg+xml" href="cuddlyferris.svg" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>chippy - CHIP-8 Interpreter</title>
     </head>
@@ -46,6 +46,10 @@
                         <label for="target-select">ROM</label>
                         <select name="rom" id="rom-select">
                             <option value="nyancat.ch8">nyancat</option>
+                            <option value="tracker.ch8">tracker</option>
+                            <option value="rps.ch8">rps</option>
+                            <option value="danm8ku.ch8">danm8ku</option>
+                            <option value="snake.ch8">snake</option>
                             <option value="1-chip8-logo.ch8">1-chip8-logo</option>
                             <option value="2-ibm-logo.ch8">2-ibm-logo</option>
                             <option value="3-corax+.ch8">3-corax+</option>
@@ -64,8 +68,9 @@
                             <option value="1" clock="30">SUPER-CHIP (Modern)</option>
                             <option value="2" clock="30">SUPER-CHIP (Legacy)</option>
                         </select>
-                        <label for="clock-input">Clock</label>
+                        <label for="clock-input">Clock (instructions per second)</label>
                         <input type="number" id="clock-input" value="30000">
+                        <span>Sync/target/clock requirements vary significantly per ROM</span>
                         <span>Reset to apply changes</span>
                         <button id="reset-button">Reset</button>
                     </div>
