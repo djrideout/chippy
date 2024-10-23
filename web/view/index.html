@@ -2,14 +2,92 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+        <link rel="icon" type="image/svg+xml" href="cuddlyferris.svg" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>chippy</title>
+        <title>chippy - CHIP-8 Interpreter</title>
     </head>
     <body>
-        <div id="emulator">
-            <div id="emulator-overlay">
-                Click to start
+        <div id="emulator-wrapper">
+            <div id="emulator">
+                <div id="emulator-overlay">
+                    Click/tap to start
+                </div>
+            </div>
+            <div id="emulator-controls">
+                <div id="emulator-tabs">
+                    <div class="emulator-tab keypad selected">Keypad</div>
+                    <div class="emulator-tab settings">Settings</div>
+                    <div class="emulator-tab about">About</div>
+                </div>
+                <div id="emulator-control-content">
+                    <div class="emulator-content keypad">
+                        <div class="keypad-key" key="Key1">1</div>
+                        <div class="keypad-key" key="Key2">2</div>
+                        <div class="keypad-key" key="Key3">3</div>
+                        <div class="keypad-key" key="Key4">C</div>
+                        <div class="keypad-key" key="Q">4</div>
+                        <div class="keypad-key" key="W">5</div>
+                        <div class="keypad-key" key="E">6</div>
+                        <div class="keypad-key" key="R">D</div>
+                        <div class="keypad-key" key="A">7</div>
+                        <div class="keypad-key" key="S">8</div>
+                        <div class="keypad-key" key="D">9</div>
+                        <div class="keypad-key" key="F">E</div>
+                        <div class="keypad-key" key="Z">A</div>
+                        <div class="keypad-key" key="X">0</div>
+                        <div class="keypad-key" key="C">B</div>
+                        <div class="keypad-key" key="V">F</div>
+                    </div>
+                    <div class="emulator-content settings" style="display: none;">
+                        <label for="sync-mode-select">Sync Mode</label>
+                        <select name="sync-mode" id="sync-mode-select">
+                            <option value="1">Audio Callback</option>
+                            <option value="0">VSync (No Audio)</option>
+                        </select>
+                        <label for="target-select">ROM</label>
+                        <select name="rom" id="rom-select">
+                            <option value="nyancat.ch8">nyancat</option>
+                            <option value="tracker.ch8">tracker</option>
+                            <option value="rps.ch8">rps</option>
+                            <option value="danm8ku.ch8">danm8ku</option>
+                            <option value="snake.ch8">snake</option>
+                            <option value="1-chip8-logo.ch8">1-chip8-logo</option>
+                            <option value="2-ibm-logo.ch8">2-ibm-logo</option>
+                            <option value="3-corax+.ch8">3-corax+</option>
+                            <option value="4-flags.ch8">4-flags</option>
+                            <option value="5-quirks.ch8">5-quirks</option>
+                            <option value="6-keypad.ch8">6-keypad</option>
+                            <option value="7-beep.ch8">7-beep</option>
+                            <option value="8-scrolling.ch8">8-scrolling</option>
+                        </select>
+                        <input type="file" name="rom-file" id="rom-file-input" />
+                        <button id="rom-file-button">Load ROM from file</button>
+                        <label for="target-select">Target</label>
+                        <select name="target" id="target-select">
+                            <option value="3" clock="30000">XO-CHIP</option>
+                            <option value="0" clock="11">CHIP-8</option>
+                            <option value="1" clock="30">SUPER-CHIP (Modern)</option>
+                            <option value="2" clock="30">SUPER-CHIP (Legacy)</option>
+                        </select>
+                        <label for="clock-input">Clock (instructions per second)</label>
+                        <input type="number" id="clock-input" value="30000">
+                        <span>Sync/target/clock requirements vary significantly per ROM</span>
+                        <span>Reset to apply changes</span>
+                        <button id="reset-button">Reset</button>
+                    </div>
+                    <div class="emulator-content about" style="display: none;">
+                        <h1><a href="https://www.github.com/djrideout/chippy" target="_blank">chippy</a></h1>
+                        A CHIP-8 interpreter written in Rust
+                        <span>Written by <a href="https://www.github.com/djrideout" target="_blank">D.J. Rideout</a></span>
+                        <br>
+                        <span><a href="https://kouzeru.itch.io/xo-nyancat" target="_blank">nyancat</a> by <a href="https://kouzeru.itch.io/" target="_blank">Kouzerumatsukite</a></span>
+                        <span><a href="https://kouzeru.itch.io/xo-tracker-demo" target="_blank">tracker</a> by <a href="https://kouzeru.itch.io/" target="_blank">Kouzerumatsukite</a></span>
+                        <span><a href="https://johnearnest.github.io/chip8Archive/play.html?p=RPS" target="_blank">rps</a> by <a href="https://systemlogoff.com/" target="_blank">SystemLogoff</a></span>
+                        <span><a href="https://johnearnest.github.io/chip8Archive/play.html?p=danm8ku" target="_blank">danm8ku</a> by <a href="https://github.com/buffis" target="_blank">buffi</a></span>
+                        <span><a href="https://johnearnest.github.io/chip8Archive/play.html?p=snake" target="_blank">snake</a> by <a href="https://boringreallife.com/" target="_blank">TimoTriisa</a></span>
+                        <span><a href="https://github.com/Timendus/chip8-test-suite" target="_blank">test ROMs</a> by <a href="https://github.com/Timendus" target="_blank">Timendus</a></span>
+                    </div>
+                </div>
             </div>
         </div>
         <script type="module" src="/src/main.ts"></script>

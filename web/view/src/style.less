@@ -1,25 +1,107 @@
+@font: #ff9e24;
+@background: #612b0a;
+@overlay-background: #662200;
+@controls-background: #4e1913;
+@key-pressed: #2b1707;
+@aspect-ratio: 4 / 5;
+
 :root {
     width: 100%;
     height: 100%;
     body {
+        align-content: center;
         margin: 0;
         width: 100%;
         height: 100%;
-        #emulator {
-            display: none;
-            #emulator-overlay {
-                cursor: pointer;
+        color: @font;
+        a {
+            color: @font;
+        }
+        background: @background;
+        font-family: Lato, sans-serif;
+        #emulator-wrapper {
+            display: flex;
+            margin: auto;
+            flex-direction: column;
+            aspect-ratio: @aspect-ratio;
+            height: 100%;
+            @media (aspect-ratio < @aspect-ratio) {
+                height: unset;
                 width: 100%;
-                height: 100%;
-                font-size: 32px;
-                background-color: lightgrey;
-                text-align: center;
-                align-content: center;
             }
-            canvas {
-                image-rendering: pixelated;
-                width: inherit !important;
-                height: inherit !important;
+            #emulator {
+                #emulator-overlay {
+                    aspect-ratio: 2 / 1;
+                    cursor: pointer;
+                    font-size: 32px;
+                    background: @overlay-background;
+                    text-align: center;
+                    align-content: center;
+                }
+                canvas {
+                    display: block;
+                    outline: 0;
+                    image-rendering: pixelated;
+                    width: 100% !important;
+                    height: unset !important;
+                }
+            }
+            #emulator-controls {
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+                #emulator-tabs {
+                    .emulator-tab {
+                        display: inline-block;
+                        cursor: pointer;
+                        padding: 5px 10px;
+                        background: @background;
+                        &.selected {
+                            background: @controls-background;
+                        }
+                    }
+                }
+                #emulator-control-content {
+                    flex-grow: 1;
+                    background: @controls-background;
+                    .emulator-content {
+                        box-shadow: inset 0px 0px 0px 2px @key-pressed;
+                        height: 100%;
+                        &.keypad {
+                            -webkit-tap-highlight-color: transparent;
+                            user-select: none;
+                            cursor: pointer;
+                            display: grid;
+                            grid-template-columns: 25% 25% 25% 25%;
+                            font-size: 25px;
+                            .keypad-key {
+                                text-align: center;
+                                align-content: center;
+                                box-shadow: inset 0px 0px 0px 1px @key-pressed;
+                                &.pressed {
+                                    background: @key-pressed;
+                                }
+                            }
+                        }
+                        &.settings, &.about {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            text-align: center;
+                        }
+                        &.settings {
+                            label, span {
+                                margin-top: 10px;
+                            }
+                            #reset-button {
+                                margin-bottom: 10px;
+                            }
+                            #rom-file-input {
+                                display: none;
+                            }
+                        }
+                    }
+                }
             }
         }
     }

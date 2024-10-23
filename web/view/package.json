@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:full": "cargo run --package wbg && vite",
+    "dev": "vite --host",
+    "dev:full": "cargo run --package wbg && vite --host",
     "build": "vite build",
     "build:wasm": "cargo run --package wbg",
     "build:full": "cargo run --package wbg && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --host"
   },
   "devDependencies": {
     "less": "^4.2.0",

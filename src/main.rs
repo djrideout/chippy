@@ -1,8 +1,9 @@
 mod utils;
 mod core;
 
-use basic_emu_frontend::{SyncModes, keymap::Keymap, VirtualKeyCode, block_on};
+use basic_emu_frontend::{block_on, keymap::Keymap, Frontend, SyncModes, VirtualKeyCode};
 use clap::Parser;
+use std::sync::{Arc, Mutex};
 
 // Command line arguments
 #[derive(Parser, Debug)]
@@ -73,6 +74,11 @@ async fn run() {
 
     let sync_mode = Args::parse().sync;
 
-    let frontend = core::create_frontend(core, Keymap::new(&KEYMAP), sync_mode);
+    let frontend = Frontend::new(
+        Arc::new(Mutex::new(core)),
+        Keymap::new(&KEYMAP),
+        sync_mode
+    );
+
     frontend.start().await
 }

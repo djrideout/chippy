@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wasm-bindgen-cli-support = "0.2.95"
+basic_emu_frontend = { git = "https://github.com/djrideout/basic-emu-frontend.git" }

@@ -5,6 +5,8 @@ use clap::ValueEnum;
 use std::hash::{RandomState, BuildHasher, Hasher, DefaultHasher};
 use basic_emu_frontend::{Core, Frontend, keymap::Keymap, SyncModes};
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
+use gloo_utils::format::JsValueSerdeExt;
 
 #[cfg(test)]
 mod test;
@@ -65,7 +67,6 @@ const WIDTH: usize = 128;
 const HEIGHT: usize = 64;
 const PLANE_COUNT: usize = 2;
 
-#[wasm_bindgen]
 pub struct Chip8 {
     // Public members
     // For high-res resolution mode
@@ -94,6 +95,8 @@ pub struct Chip8 {
     r_audio: u8, // Audio timer
     // Stack
     stack: [u16; 16],
+    // The ROM, this gets copied into memory on init/reset
+    rom: Vec<u8>,
     // Memory
     mem: [u8; 0x10000], // only XO-CHIP officially supports 0x10000, the rest have 0x1000 but just use the full range for simplicity
     // Halting flag (waiting for input/drawing)
@@ -116,9 +119,7 @@ pub struct Chip8 {
     rand_hasher: DefaultHasher
 }
 
-#[wasm_bindgen]
 impl Chip8 {
-    #[wasm_bindgen(constructor)]
     pub fn new(target: Target, clock: u32, rom: Vec<u8>) -> Chip8 {
         let mut chip8 = Chip8 {
             target,
@@ -131,6 +132,7 @@ impl Chip8 {
             r_delay: 0,
             r_audio: 0,
             stack: [0; 16],
+            rom: rom.clone(),
             mem: [0; 0x10000],
             halting: false,
             prev_op: 0,
@@ -171,24 +173,66 @@ impl Chip8 {
         chip8
     }
 
-    #[wasm_bindgen]
-    pub fn get_width(&self) -> usize {
-        WIDTH
+    pub fn reset(&mut self) {
+        self.remaining = self.clock;
+        self.r_v = [0; 16];
+        self.r_i = 0;
+        self.r_pc = 0x200;
+        self.r_sp = 0;
+        self.r_delay = 0;
+        self.r_audio = 0;
+        self.stack = [0; 16];
+        self.mem = [0; 0x10000];
+        self.halting = false;
+        self.prev_op = 0;
+        self.enabled_planes = 0b01;
+        self.high_res = false;
+        self.active_planes = [
+            [0; HEIGHT],
+            [0; HEIGHT]
+        ];
+        self.buffer_planes = [
+            [0; HEIGHT],
+            [0; HEIGHT]
+        ];
+        self.prev_keys = [false; 16];
+        self.curr_keys = [false; 16];
+        self.audio_time = 0.0;
+        self.audio_buffer = 0x0000FFFF0000FFFF0000FFFF0000FFFF; // Arbitrary pattern for non-XO buzzer
+        self.audio_frequency = 4000.0;
+        self.audio_oscillator = 0.0;
+        self.sample_queue = VecDeque::new();
+        self.rand_hasher = RandomState::new().build_hasher();
+
+        // Load ROM into memory
+        let mut i = 0x200; // ROM starts at 0x200 in memory
+        for byte in self.rom.clone().into_iter() {
+            self.mem[i] = byte;
+            i += 1;
+        }
     }
 
-    #[wasm_bindgen]
-    pub fn get_height(&self) -> usize {
-        HEIGHT
+    pub fn set_clock(&mut self, clock: u32) {
+        self.clock = clock;
+        self.seconds_per_instruction = 1.0 / (FRAME_RATE * clock as f32);
+    }
+
+    pub fn set_target(&mut self, target: Target) {
+        self.target = target;
+    }
+
+    pub fn load_rom(&mut self, rom: Vec<u8>) {
+        self.rom = rom;
     }
 }
 
 impl Core for Chip8 {
     fn get_width(&self) -> usize {
-        self.get_width()
+        WIDTH
     }
 
     fn get_height(&self) -> usize {
-        self.get_height()
+        HEIGHT
     }
 
     fn set_num_output_channels(&mut self, value: usize) {
@@ -681,7 +725,7 @@ impl Core for Chip8 {
                                     row_i %= _y_mod;
                                 }
                                 // plane_offset will be non-negative at this point, so casting to usize is fine
-                                let _base_addr = (sprite_width >> 3) * plane_offset as usize * sprite_height + self.r_i + i;
+                                let _base_addr = (sprite_width >> 3) * (i + plane_offset as usize * sprite_height) + self.r_i;
                                 let mut sprite_row = self.mem[_base_addr] as u128;
                                 if sprite_width == 16 {
                                     sprite_row = (sprite_row << 8) | self.mem[_base_addr + 1] as u128;
@@ -763,7 +807,7 @@ impl Core for Chip8 {
 
     fn get_sample(&mut self) -> f32 {
         match self.sample_queue.pop_front() {
-            Some(sample) => sample,
+            Some(sample) => sample * 0.15,
             None => 0.0
         }
     }
@@ -776,6 +820,10 @@ impl Core for Chip8 {
     fn release_key(&mut self, key_index: usize) {
         self.prev_keys[key_index] = self.curr_keys[key_index];
         self.curr_keys[key_index] = false;
+    }
+
+    fn get_key_pressed(&self, key_index: usize) -> bool {
+        self.curr_keys[key_index]
     }
 
     fn draw(&self, frame: &mut [u8]) {
@@ -802,8 +850,52 @@ impl Core for Chip8 {
     }
 }
 
-// wasm_bindgen can't handle generics, so wrap the Frontend constructor to make it concrete
 #[wasm_bindgen]
-pub fn create_frontend(core: Chip8, keymap: Keymap, sync_mode: SyncModes) -> Frontend {
-    Frontend::new(core, keymap, sync_mode)
+struct JsApi {
+    frontend: Frontend,
+    core: Arc<Mutex<Chip8>>
+}
+
+// A thread-safe wrapper around the Chip8 struct to interact with it from JS
+#[wasm_bindgen]
+impl JsApi {
+    #[wasm_bindgen(constructor)]
+    pub fn new(target: Target, clock: u32, rom: Vec<u8>, keymap: Keymap, sync_mode: SyncModes) -> JsApi {
+        let core = Chip8::new(target, clock, rom);
+        let arc_core = Arc::new(Mutex::new(core));
+        JsApi {
+            frontend: Frontend::new(arc_core.clone(), keymap, sync_mode),
+            core: arc_core
+        }
+    }
+
+    #[wasm_bindgen]
+    pub async fn start(&self) {
+        self.frontend.start().await
+    }
+
+    #[wasm_bindgen]
+    pub fn set_sync_mode(&self, sync_mode: SyncModes) {
+        self.frontend.set_sync_mode(sync_mode);
+    }
+
+    #[wasm_bindgen]
+    pub fn reset(&self) {
+        self.core.lock().unwrap().reset();
+    }
+
+    #[wasm_bindgen]
+    pub fn set_clock(&self, clock: u32) {
+        self.core.lock().unwrap().set_clock(clock);
+    }
+
+    #[wasm_bindgen]
+    pub fn set_target(&self, target: Target) {
+        self.core.lock().unwrap().set_target(target);
+    }
+
+    #[wasm_bindgen]
+    pub fn load_rom(&self, rom: Vec<u8>) {
+        self.core.lock().unwrap().load_rom(rom);
+    }
 }
