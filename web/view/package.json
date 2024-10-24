@@ -3,15 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://djrideout.github.io/chippy/",
   "scripts": {
     "dev": "vite --host",
     "dev:full": "cargo run --package wbg && vite --host",
     "build": "vite build",
     "build:wasm": "cargo run --package wbg",
     "build:full": "cargo run --package wbg && vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "predeploy": "npm run build:full",
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
+    "gh-pages": "^6.2.0",
     "less": "^4.2.0",
     "typescript": "^5.5.3",
     "vite": "^5.4.8"
