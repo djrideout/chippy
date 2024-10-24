@@ -24,6 +24,7 @@ target/
 *.ch8
 # Except for ones included in the "roms" folder
 !roms/*.ch8
+!docs/*.ch8
 
 # Added by cargo
 

@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:wasm": "cargo run --package wbg",
     "build:full": "cargo run --package wbg && vite build",
-    "build:gh-pages": "npm run build:full -- --outDir gh-pages",
+    "build:gh-pages": "npm run build:full -- --outDir ../../docs --emptyOutDir",
     "preview": "vite preview --host"
   },
   "devDependencies": {
