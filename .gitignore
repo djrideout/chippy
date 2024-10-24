@@ -24,8 +24,6 @@ target/
 *.ch8
 # Except for ones included in the "roms" folder
 !roms/*.ch8
-# Hacky workaround for gh-pages assuming package is at root of repo
-!web/view/dist/*.ch8
 
 # Added by cargo
 
